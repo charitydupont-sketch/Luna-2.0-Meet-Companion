@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Luna 2.0 Meet Injector",
+  "version": "1.0",
+  "description": "Integrates the Luna 2.0 Companion directly into Google Meet calls as a participant.",
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://calendar.google.com/*"],
+      "js": ["calendar-content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "permissions": ["activeTab"]
+}

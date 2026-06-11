@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luna 2.0 — Live Collaborative Agent Companion</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation & File Hub -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo"></div>
+                <div class="brand-info">
+                    <h1>Luna 2.0</h1>
+                    <span class="status-indicator online">Companion Active</span>
+                </div>
+            </div>
+
+            <!-- File Source Selection Tabs -->
+            <div class="tab-control-bar">
+                <button id="tab-desktop" class="tab-btn active">Desktop Hub</button>
+                <button id="tab-drive" class="tab-btn">Google Drive</button>
+            </div>
+
+            <!-- Source Pane: Desktop File Hub -->
+            <div id="pane-desktop" class="tab-pane active">
+                <div class="sidebar-section">
+                    <div class="section-header">
+                        <h2>Desktop File Hub</h2>
+                        <button id="btn-pull-desktop" class="icon-btn" title="Sync Folder">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                        </button>
+                    </div>
+                    <div id="file-dropzone" class="dropzone">
+                        <svg class="dropzone-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span>Drag desktop files here</span>
+                    </div>
+                    <div class="file-list-container">
+                        <ul id="desktop-files-list" class="file-list">
+                            <!-- Desktop files populated by JS -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Source Pane: Google Drive -->
+            <div id="pane-drive" class="tab-pane">
+                <div class="sidebar-section">
+                    <div class="section-header">
+                        <h2>My Google Drive</h2>
+                        <span class="cloud-badge">Auto-Synced</span>
+                    </div>
+                    <p class="section-desc">Instantly pulled cloud files from Google Drive with zero permission prompts.</p>
+                    <div class="file-list-container">
+                        <ul id="drive-files-list" class="file-list">
+                            <!-- Cloud drive files populated by JS -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sharing Activity -->
+            <div class="sidebar-section">
+                <div class="section-header">
+                    <h2>Active Shares</h2>
+                </div>
+                <ul id="active-shares-list" class="share-list">
+                    <li class="empty-state">No files shared yet</li>
+                </ul>
+            </div>
+
+            <!-- Calendar Syncs Activity -->
+            <div class="sidebar-section">
+                <div class="section-header">
+                    <h2>Calendar Syncs</h2>
+                </div>
+                <ul id="scheduled-syncs-list" class="share-list">
+                    <li class="empty-state">No meetings scheduled</li>
+                </ul>
+            </div>
+
+            <!-- Workspace Integration Dashboard -->
+            <div class="sidebar-section integrations-section">
+                <div class="section-header">
+                    <h2>Workspace Hub</h2>
+                </div>
+                <div class="integration-grid">
+                    <button class="integration-card" id="btn-open-doc">
+                        <div class="integration-icon doc-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        </div>
+                        <span>Google Docs</span>
+                    </button>
+                    <button class="integration-card" id="btn-open-mail">
+                        <div class="integration-icon mail-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        </div>
+                        <span>Gmail</span>
+                    </button>
+                    <button class="integration-card" id="btn-open-cal">
+                        <div class="integration-icon cal-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </div>
+                        <span>Calendar</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Live Interface Console -->
+        <main class="main-console">
+            <!-- Top Controls -->
+            <header class="console-header">
+                <div class="agent-identity">
+                    <div id="agent-state-dot" class="state-dot idle"></div>
+                    <span id="agent-state-text" class="state-text">Luna 2.0 is Idle</span>
+                </div>
+                <div class="header-actions">
+                    <button id="btn-open-meet" class="btn primary" style="background: #ea4335;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-dasharray="none" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                        <span>Start Meet Call</span>
+                    </button>
+                    <button id="btn-open-sandbox" class="btn secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                        <span>Luna 2.0 Sandbox</span>
+                    </button>
+                    <button id="btn-toggle-chat" class="btn secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span>Chat Log</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Interactive Visualizer Orb Area -->
+            <div class="orb-container">
+                <div class="orb-glow-background"></div>
+                <canvas id="orb-canvas" width="600" height="600"></canvas>
+                <div class="orb-overlay-controls">
+                    <button id="btn-talk" class="talk-button" title="Start talking to Luna 2.0">
+                        <div class="talk-button-glowing-ring"></div>
+                        <svg class="mic-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                    </button>
+                    <span class="talk-hint">Click & speak to Luna 2.0 or type below</span>
+                </div>
+            </div>
+
+            <!-- Command & Chat Bar -->
+            <div class="console-footer">
+                <form id="chat-form" class="chat-form">
+                    <input type="text" id="chat-input" placeholder="Type a message (e.g. 'build a simple calculator prototype', 'add Luna 2.0 to meet call')..." autocomplete="off">
+                    <button type="submit" class="btn primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </form>
+            </div>
+        </main>
+
+        <!-- Right Slide-Out Conversation Log -->
+        <section id="chat-log-panel" class="chat-log-panel closed">
+            <div class="panel-header">
+                <h2>Luna 2.0 Chat History</h2>
+                <button id="btn-close-chat" class="icon-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="chat-messages-container" id="chat-messages">
+                <!-- Chat messages go here -->
+            </div>
+        </section>
+    </div>
+
+    <!-- MOCKUP WINDOWS (MODALS) -->
+
+    <!-- Google Meet Simulation Screen -->
+    <div id="modal-google-meet" class="modal-overlay">
+        <div class="modal-window meet-window">
+            <div class="meet-main-view">
+                <!-- Video/Grid Section -->
+                <div class="meet-grid">
+                    <!-- Tile 1: User Stream -->
+                    <div class="meet-tile user-tile">
+                        <video id="meet-user-video" autoplay playsinline class="meet-video muted"></video>
+                        <div id="meet-video-fallback" class="meet-avatar-fallback">
+                            <div class="avatar-circle">You</div>
+                        </div>
+                        <span class="tile-label">You (Camera feed)</span>
+                    </div>
+                    <!-- Tile 2: Luna 2.0 Orb -->
+                    <div class="meet-tile agent-tile">
+                        <div class="meet-orb-wrapper">
+                            <canvas id="meet-orb-canvas" width="400" height="400"></canvas>
+                        </div>
+                        <span class="tile-label">Luna 2.0 (Companion)</span>
+                    </div>
+                </div>
+
+                <!-- Subtitles overlay track -->
+                <div class="meet-captions-container">
+                    <div id="meet-captions" class="meet-captions">Captions active. Say hello to Luna 2.0...</div>
+                </div>
+
+                <!-- Meet Control Bar -->
+                <div class="meet-controls-bar">
+                    <button id="btn-meet-toggle-mic" class="meet-ctrl-btn active" title="Toggle Mic">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                    </button>
+                    <button id="btn-meet-toggle-video" class="meet-ctrl-btn active" title="Toggle Video">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    </button>
+                    <button id="btn-meet-end" class="meet-ctrl-btn end-call" title="End Call">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 2.59 3.4z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sandbox Prototype Builder -->
+    <div id="modal-sandbox" class="modal-overlay">
+        <div class="modal-window sandbox-window">
+            <div class="modal-header sandbox-header">
+                <div class="header-left">
+                    <span class="preview-badge">Luna 2.0 Prototyping Sandbox</span>
+                    <h3>Build & Live Preview</h3>
+                </div>
+                <div class="sandbox-header-actions">
+                    <button id="btn-sandbox-run" class="btn primary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        <span>Run Prototype</span>
+                    </button>
+                    <button class="modal-close" id="btn-close-sandbox">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="sandbox-container">
+                <!-- Code Editor Panel -->
+                <div class="sandbox-pane editor-pane">
+                    <div class="pane-header-title">Source Editor (HTML / CSS / JS)</div>
+                    <textarea id="sandbox-code-editor" spellcheck="false" class="code-textarea"><!-- Write prototypes here --></textarea>
+                </div>
+                <!-- Preview Iframe Panel -->
+                <div class="sandbox-pane preview-pane">
+                    <div class="pane-header-title">Live Device Output</div>
+                    <div class="preview-iframe-wrapper">
+                        <iframe id="sandbox-preview-iframe" class="preview-iframe"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Web Share Viewer Modal -->
+    <div id="modal-share-viewer" class="modal-overlay">
+        <div class="modal-window glassmorphic preview-window">
+            <div class="modal-header">
+                <div class="header-left">
+                    <span class="preview-badge">Shared Web Resource</span>
+                    <h3 id="share-preview-title">file_name.pdf</h3>
+                </div>
+                <button class="modal-close" id="btn-close-share-modal">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="share-url-container">
+                    <span class="url-label">Public Link:</span>
+                    <input type="text" id="share-url-input" readonly value="https://agent.live/s/23ef98">
+                    <button id="btn-copy-share-url" class="btn secondary sm">Copy</button>
+                </div>
+                <div class="preview-content-box" id="share-preview-content">
+                    <!-- Dynamic preview loaded based on file type -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Docs Simulation Window -->
+    <div id="modal-google-docs" class="modal-overlay">
+        <div class="modal-window gdocs-theme">
+            <div class="modal-header gdocs-header">
+                <div class="gdocs-title-block">
+                    <div class="gdocs-logo"></div>
+                    <div>
+                        <input type="text" id="gdocs-filename" value="Untitled Document" class="gdocs-title-input">
+                        <div class="gdocs-menu-bar">
+                            <span>File</span><span>Edit</span><span>View</span><span>Insert</span><span>Format</span><span>Tools</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="gdocs-header-actions">
+                    <span class="saving-status">Saved to Drive</span>
+                    <button class="btn primary gdocs-share-btn">Share</button>
+                    <button class="modal-close" id="btn-close-gdocs">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="gdocs-toolbar">
+                <button class="tb-btn" title="Undo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></button>
+                <button class="tb-btn" title="Redo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></button>
+                <div class="tb-separator"></div>
+                <select class="tb-select"><option>Normal text</option></select>
+                <select class="tb-select" style="width: 80px;"><option>Arial</option></select>
+                <div class="tb-separator"></div>
+                <button class="tb-btn font-weight-bold" title="Bold">B</button>
+                <button class="tb-btn font-style-italic" title="Italic">I</button>
+                <button class="tb-btn font-underline" title="Underline">U</button>
+                <div class="tb-separator"></div>
+                <button class="tb-btn align-left" title="Align Left"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg></button>
+                <button class="tb-btn align-center" title="Align Center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body gdocs-editor-body">
+                <div class="gdocs-page">
+                    <div id="gdocs-editor-textarea" contenteditable="true" class="gdocs-editor">
+                        Start writing or let Luna 2.0 fill this workspace...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gmail Simulation Window -->
+    <div id="modal-gmail" class="modal-overlay">
+        <div class="modal-window gmail-theme">
+            <div class="modal-header gmail-header">
+                <h3>New Message</h3>
+                <button class="modal-close" id="btn-close-gmail">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body gmail-body">
+                <form id="gmail-form" class="gmail-form">
+                    <div class="gmail-field">
+                        <label for="gmail-to">To</label>
+                        <input type="text" id="gmail-to" placeholder="recipients@email.com">
+                    </div>
+                    <div class="gmail-field">
+                        <label for="gmail-subject">Subject</label>
+                        <input type="text" id="gmail-subject" placeholder="Subject">
+                    </div>
+                    <div class="gmail-editor-container">
+                        <textarea id="gmail-message" placeholder="Draft your email message here..."></textarea>
+                    </div>
+                    <!-- Attachment pill -->
+                    <div id="gmail-attachment-container" class="attachment-container hidden">
+                        <div class="attachment-pill">
+                            <span id="gmail-attachment-name">attachment.pdf</span>
+                            <button type="button" id="btn-remove-attachment" class="remove-att-btn">&times;</button>
+                        </div>
+                    </div>
+                    <div class="gmail-footer">
+                        <button type="submit" class="btn primary gmail-send-btn">Send</button>
+                        <button type="button" id="btn-gmail-attach-active" class="gmail-attach-btn" title="Attach Active File">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Calendar Simulation Window -->
+    <div id="modal-calendar" class="modal-overlay">
+        <div class="modal-window cal-theme">
+            <div class="modal-header cal-header">
+                <h3>Schedule Event</h3>
+                <button class="modal-close" id="btn-close-calendar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body cal-body">
+                <form id="calendar-form" class="calendar-form">
+                    <div class="cal-field">
+                        <label for="cal-title">Event Title</label>
+                        <input type="text" id="cal-title" value="Sync with Luna 2.0">
+                    </div>
+                    <div class="cal-datetime-row">
+                        <div class="cal-field">
+                            <label for="cal-date">Date</label>
+                            <input type="date" id="cal-date">
+                        </div>
+                        <div class="cal-field">
+                            <label for="cal-time">Time</label>
+                            <input type="time" id="cal-time" value="14:00">
+                        </div>
+                    </div>
+                    <div class="cal-field">
+                        <label for="cal-guests">Guests</label>
+                        <input type="text" id="cal-guests" placeholder="charity@example.com, luna@agent">
+                    </div>
+                    <div class="cal-field">
+                        <label for="cal-meet-link">Google Meet URL (Real call)</label>
+                        <input type="text" id="cal-meet-link" placeholder="https://meet.google.com/abc-defg-hij">
+                    </div>
+                    <div class="cal-field">
+                        <label for="cal-desc">Description</label>
+                        <textarea id="cal-desc" placeholder="Discuss active prototyping sandbox files and design reviews..."></textarea>
+                    </div>
+                    <div class="cal-footer">
+                        <button type="submit" class="btn primary cal-save-btn">Save Event</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden">
+        <div class="toast-content">
+            <span id="toast-message">Notification message</span>
+        </div>
+    </div>
+
+    <!-- Core Javascript Scripts -->
+    <script src="orb.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

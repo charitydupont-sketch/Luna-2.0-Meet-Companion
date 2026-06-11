@@ -1,0 +1,166 @@
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { execFile } = require('child_process');
+
+const PORT = 8000;
+const PUBLIC_DIR = __dirname;
+
+// MIME type mapping for static files
+const MIME_TYPES = {
+    '.html': 'text/html',
+    '.css': 'text/css',
+    '.js': 'text/javascript',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon'
+};
+
+const server = http.createServer((req, res) => {
+    // Enable CORS for development
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+    }
+
+    // API Endpoint to spawn actual Google Meet bot
+    if (req.method === 'POST' && req.url === '/api/join-meet') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        
+        req.on('end', () => {
+            try {
+                const data = JSON.parse(body);
+                const meetUrl = data.url;
+
+                if (!meetUrl) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Google Meet URL is required' }));
+                    return;
+                }
+
+                // SECURITY: Strictly validate the meet URL to prevent shell injection attacks
+                // Expected format: https://meet.google.com/abc-defg-hij
+                const meetRegex = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/;
+                if (!meetRegex.test(meetUrl)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid Google Meet URL format. Must match https://meet.google.com/abc-defg-hij' }));
+                    return;
+                }
+
+                console.log(`[Luna 2.0 API] Request received to join actual Google Meet: ${meetUrl}`);
+                
+                // Spawn launcher script safely using execFile
+                const scriptPath = path.join(PUBLIC_DIR, 'run_luna_meet.sh');
+                
+                execFile(scriptPath, [meetUrl], (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`[Luna 2.0 API Error] Failed to launch Meet script: ${error.message}`);
+                    }
+                    if (stdout) console.log(`[Luna 2.0 Bot] ${stdout}`);
+                    if (stderr) console.error(`[Luna 2.0 Bot Error] ${stderr}`);
+                });
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, message: 'Luna 2.0 launcher script triggered' }));
+
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Failed to process request: ' + err.message }));
+            }
+        });
+        return;
+    }
+
+    // API Endpoint to generate TTS speech
+    if (req.method === 'GET' && req.url.startsWith('/api/tts')) {
+        const urlParams = new URL(req.url, 'http://localhost:8000');
+        const text = urlParams.searchParams.get('text');
+        if (!text) {
+            res.writeHead(400, { 'Content-Type': 'text/plain' });
+            res.end('Text parameter is required');
+            return;
+        }
+
+        const timestamp = Date.now();
+        const aiffPath = path.join('/tmp', `speech_${timestamp}.aiff`);
+        const wavPath = path.join('/tmp', `speech_${timestamp}.wav`);
+
+        // Run macOS say command
+        execFile('/usr/bin/say', ['-o', aiffPath, text], (err) => {
+            if (err) {
+                console.error('[TTS API Error] say command failed:', err);
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Failed to generate speech');
+                return;
+            }
+
+            // Convert AIFF to WAV
+            execFile('/usr/bin/afconvert', ['-f', 'WAVE', '-d', 'LEI16@22050', aiffPath, wavPath], (err2) => {
+                // Clean up AIFF file
+                fs.unlink(aiffPath, () => {});
+
+                if (err2) {
+                    console.error('[TTS API Error] afconvert failed:', err2);
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Failed to convert speech');
+                    return;
+                }
+
+                // Serve the WAV file
+                res.writeHead(200, { 'Content-Type': 'audio/wav' });
+                const stream = fs.createReadStream(wavPath);
+                stream.pipe(res);
+
+                // Clean up WAV file after sending
+                res.on('finish', () => {
+                    fs.unlink(wavPath, () => {});
+                });
+            });
+        });
+        return;
+    }
+
+
+    // Static Files Server routing
+    let filePath = path.join(PUBLIC_DIR, req.url === '/' ? 'index.html' : req.url);
+    
+    // Security check: Prevent directory traversal outside web root
+    const relative = path.relative(PUBLIC_DIR, filePath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Forbidden');
+        return;
+    }
+
+    const extname = path.extname(filePath);
+    const contentType = MIME_TYPES[extname] || 'application/octet-stream';
+
+    fs.readFile(filePath, (error, content) => {
+        if (error) {
+            if (error.code === 'ENOENT') {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('File not found');
+            } else {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Internal server error');
+            }
+        } else {
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(content, 'utf-8');
+        }
+    });
+});
+
+server.listen(PORT, '127.0.0.1', () => {
+    console.log(`[Luna 2.0 Server] Running at http://127.0.0.1:${PORT}`);
+});

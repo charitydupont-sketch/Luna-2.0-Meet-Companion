@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Luna 2.0 Meet Bridge</title>
+</head>
+<body>
+    <script>
+        console.log("Luna 2.0 Meet Bridge iframe active");
+        
+        // Listen on same-origin BroadcastChannel
+        const channel = new BroadcastChannel('luna_channel');
+        
+        channel.onmessage = (event) => {
+            console.log("Bridge received BroadcastChannel sync event: ", event.data);
+            
+            // Forward message to cross-origin Google Meet parent window
+            window.parent.postMessage({
+                type: 'LUNA_SYNC',
+                payload: event.data
+            }, '*');
+        };
+
+        // Listen for messages from cross-origin parent (Google Meet window context)
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'MEET_TO_LUNA') {
+                console.log("[Bridge] Forwarding event from Meet to BroadcastChannel:", event.data.payload);
+                channel.postMessage(event.data.payload);
+            }
+        });
+        
+        // Let the parent know we are loaded and ready
+        window.parent.postMessage({ type: 'LUNA_BRIDGE_LOADED' }, '*');
+    </script>
+</body>
+</html>
