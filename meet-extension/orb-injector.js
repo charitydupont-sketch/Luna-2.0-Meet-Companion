@@ -24,6 +24,7 @@
         baseRadius: 100,
         targetRadius: 100,
         particles: [],
+        currentAudio: null,
         colors: {
             idle: ['rgba(99, 102, 241, 0.45)', 'rgba(217, 70, 239, 0.35)', 'rgba(6, 182, 212, 0.25)'],
             listening: ['rgba(6, 182, 212, 0.65)', 'rgba(99, 102, 241, 0.45)', 'rgba(16, 185, 129, 0.3)'],
@@ -212,9 +213,14 @@
         lunaLog("[Luna 2.0 Audio] Playing synthetic voice from Data URL");
         
         const playAudio = () => {
+            if (state.currentAudio) {
+                try { state.currentAudio.pause(); } catch(e){}
+            }
+
             const audio = new Audio();
             audio.crossOrigin = "anonymous";
             audio.src = dataUrl;
+            state.currentAudio = audio;
             
             const source = audioCtx.createMediaElementSource(audio);
             source.connect(audioDest);
@@ -227,6 +233,9 @@
             state.currentStatus = 'speaking';
             audio.onended = () => {
                 state.currentStatus = 'idle';
+                if (state.currentAudio === audio) {
+                    state.currentAudio = null;
+                }
             };
         };
 
@@ -264,6 +273,21 @@
             }
             if (e.data.type === 'LUNA_SYNC') {
                 const update = e.data.payload;
+                if (update.cancel) {
+                    lunaLog("[Luna 2.0 Audio] Interruption requested. Canceling speech.");
+                    if (state.currentAudio) {
+                        try {
+                            state.currentAudio.pause();
+                            state.currentAudio.src = '';
+                        } catch(e){}
+                        state.currentAudio = null;
+                    }
+                    window.speechSynthesis.cancel();
+                    state.currentStatus = 'idle';
+                    state.targetRadius = 100;
+                    captionsBox.style.display = 'none';
+                    return;
+                }
                 if (update.state) {
                     state.currentStatus = update.state;
                     if (update.state === 'thinking') state.targetRadius = 80;

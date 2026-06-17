@@ -254,5 +254,19 @@ window.addEventListener('load', () => {
     setInterval(autoEnableCaptions, 2000);
 });
 
+} else {
+    // Host mode logic (runs on the meeting host's browser context)
+    function runHostAutoAdmit() {
+        setInterval(() => {
+            const buttons = document.querySelectorAll('button');
+            for (let btn of buttons) {
+                const txt = btn.textContent.toLowerCase();
+                if (txt.includes('admit') || txt.trim() === 'admit') {
+                    btn.click();
+                    console.log("[Luna 2.0 Host Script] Automatically admitted guest participant.");
+                }
+            }
+        }, 1000);
+    }
+    window.addEventListener('load', runHostAutoAdmit);
 }
-

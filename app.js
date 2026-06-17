@@ -407,6 +407,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     elements.btnTalk.addEventListener('click', async () => {
+        // Interrupt any active agent voice playback instantly
+        broadcastState({ cancel: true });
+
         await orb.connectMicrophone();
         if (!state.recognition) {
             showToast("Speech recognition is not supported. Type in the bar!");
@@ -443,6 +446,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleUserMessage(query) {
+        // Interrupt any active agent voice playback instantly
+        broadcastState({ cancel: true });
+
         addMessageToLog('user', query);
         setAgentState('thinking');
         
