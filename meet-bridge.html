@@ -24,8 +24,51 @@
         // Listen for messages from cross-origin parent (Google Meet window context)
         window.addEventListener('message', (event) => {
             if (event.data && event.data.type === 'MEET_TO_LUNA') {
-                console.log("[Bridge] Forwarding event from Meet to BroadcastChannel:", event.data.payload);
-                channel.postMessage(event.data.payload);
+                const payload = event.data.payload;
+                
+                // Handle logging delegation
+                if (payload && payload.type === 'BROWSER_LOG') {
+                    fetch('http://127.0.0.1:8000/api/log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: payload.message })
+                    }).catch(err => {});
+                    return;
+                }
+
+                // Handle TTS audio generation and base64 conversion delegation
+                if (payload && payload.type === 'FETCH_TTS') {
+                    console.log("[Bridge] Generating audio for text:", payload.text);
+                    const ttsUrl = `http://127.0.0.1:8000/api/tts?text=${encodeURIComponent(payload.text)}`;
+                    
+                    fetch(ttsUrl)
+                        .then(response => {
+                            if (!response.ok) throw new Error("TTS generation failed");
+                            return response.blob();
+                        })
+                        .then(blob => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                window.parent.postMessage({
+                                    type: 'LUNA_AUDIO_DATA',
+                                    dataUrl: reader.result
+                                }, '*');
+                            };
+                            reader.readAsDataURL(blob);
+                        })
+                        .catch(err => {
+                            console.error("[Bridge Error] Failed to generate/encode TTS:", err.message);
+                            window.parent.postMessage({
+                                type: 'LUNA_AUDIO_ERROR',
+                                text: payload.text,
+                                error: err.message
+                            }, '*');
+                        });
+                    return;
+                }
+
+                console.log("[Bridge] Forwarding event from Meet to BroadcastChannel:", payload);
+                channel.postMessage(payload);
             }
         });
         

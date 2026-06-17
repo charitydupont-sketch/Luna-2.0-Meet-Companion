@@ -18,6 +18,9 @@ const MIME_TYPES = {
     '.ico': 'image/x-icon'
 };
 
+let queueToHub = [];
+let queueToMeet = [];
+
 const server = http.createServer((req, res) => {
     // Enable CORS for development
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -81,6 +84,28 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+
+
+    // API Endpoint to receive logs from the extension
+    if (req.method === 'POST' && req.url === '/api/log') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        req.on('end', () => {
+            try {
+                const data = JSON.parse(body);
+                console.log(`[Browser Log] ${data.message}`);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error');
+            }
+        });
+        return;
+    }
+
     // API Endpoint to generate TTS speech
     if (req.method === 'GET' && req.url.startsWith('/api/tts')) {
         const urlParams = new URL(req.url, 'http://localhost:8000');
@@ -127,6 +152,56 @@ const server = http.createServer((req, res) => {
                 });
             });
         });
+        return;
+    }
+
+
+    // Event Reflector Endpoints
+    if (req.method === 'POST' && req.url === '/api/events/to-hub') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', () => {
+            try {
+                const event = JSON.parse(body);
+                queueToHub.push(event);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(400);
+                res.end('Invalid JSON');
+            }
+        });
+        return;
+    }
+
+    if (req.method === 'POST' && req.url === '/api/events/to-meet') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', () => {
+            try {
+                const event = JSON.parse(body);
+                queueToMeet.push(event);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(400);
+                res.end('Invalid JSON');
+            }
+        });
+        return;
+    }
+
+    if (req.method === 'GET' && req.url === '/api/events/poll-hub') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(queueToHub));
+        queueToHub = []; // Clear queue
+        return;
+    }
+
+    if (req.method === 'GET' && req.url === '/api/events/poll-meet') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(queueToMeet));
+        queueToMeet = []; // Clear queue
         return;
     }
 

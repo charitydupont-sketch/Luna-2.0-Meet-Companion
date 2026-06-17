@@ -2,44 +2,54 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Initialize Canvas Orb
     const orb = new AgentOrb('orb-canvas');
 
-    // Sync Broadcast Channel for cross-tab communication
-    const lunaChannel = new BroadcastChannel('luna_channel');
+    // Sync Broadcast Channel for cross-tab communication (replaced with server reflector)
     function broadcastState(stateUpdate) {
-        lunaChannel.postMessage(stateUpdate);
+        fetch('/api/events/to-meet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(stateUpdate)
+        }).catch(err => {});
     }
 
-    // Listen to incoming messages from Google Meet calls
-    lunaChannel.onmessage = (event) => {
-        console.log("[Luna 2.0 Hub] BroadcastChannel received event:", event.data);
-        if (event.data && event.data.type === 'MEET_CHAT') {
-            const sender = event.data.sender;
-            const text = event.data.text;
-            
-            // Log the incoming message in the local dashboard chat
-            addMessageToLog('user', `[Meet: ${sender}] ${text}`);
-            
-            // Let the user know Luna 2.0 is thinking
-            setAgentState('thinking');
-            
-            setTimeout(() => {
-                const normalized = text.toLowerCase();
-                let reply = "";
-                
-                if (normalized.includes('build calculator') || normalized.includes('create calculator')) {
-                    reply = `Certainly, ${sender}! Creating a Calculator prototype in your Sandbox window.`;
-                    openSandbox(templates.calculator);
-                } else if (normalized.includes('build landing') || normalized.includes('create website')) {
-                    reply = `Sure thing, ${sender}! I have generated a landing page layout in your Sandbox.`;
-                    openSandbox(templates.landing);
-                } else {
-                    reply = `Hello ${sender}, I am Luna 2.0, your AI assistant. I received your message: "${text}"`;
-                }
-                
-                addMessageToLog('luna', reply);
-                speakText(reply);
-            }, 1200);
-        }
-    };
+    // Poll server for incoming events from the Google Meet call
+    setInterval(() => {
+        fetch('/api/events/poll-hub')
+            .then(res => res.json())
+            .then(events => {
+                events.forEach(event => {
+                    console.log("[Luna 2.0 Hub] Polled event received:", event);
+                    if (event && event.type === 'MEET_CHAT') {
+                        const sender = event.sender;
+                        const text = event.text;
+                        
+                        // Log the incoming message in the local dashboard chat
+                        addMessageToLog('user', `[Meet: ${sender}] ${text}`);
+                        
+                        // Let the user know Luna 2.0 is thinking
+                        setAgentState('thinking');
+                        
+                        setTimeout(() => {
+                            const normalized = text.toLowerCase();
+                            let reply = "";
+                            
+                            if (normalized.includes('build calculator') || normalized.includes('create calculator')) {
+                                reply = `Certainly, ${sender}! Creating a Calculator prototype in your Sandbox window.`;
+                                openSandbox(templates.calculator);
+                            } else if (normalized.includes('build landing') || normalized.includes('create website')) {
+                                reply = `Sure thing, ${sender}! I have generated a landing page layout in your Sandbox.`;
+                                openSandbox(templates.landing);
+                            } else {
+                                reply = `Hello ${sender}, I am Luna 2.0, your AI assistant. I received your message: "${text}"`;
+                            }
+                            
+                            addMessageToLog('luna', reply);
+                            speakText(reply);
+                        }, 1200);
+                    }
+                });
+            })
+            .catch(err => {});
+    }, 800);
 
     // 2. Global State Storage
     const state = {

@@ -7,16 +7,39 @@ if [ -z "$MEET_URL" ]; then
     exit 1
 fi
 
+# Strip any existing authuser parameter and force Luna's dedicated Gmail account (l08483088@gmail.com)
+MEET_URL=$(echo "$MEET_URL" | sed -E 's/([&?])authuser=[^&]*&?/\1/g' | sed -E 's/\?$//' | sed -E 's/&$//')
+if [[ "$MEET_URL" == *"?"* ]]; then
+    MEET_URL="${MEET_URL}&authuser=l08483088@gmail.com"
+else
+    MEET_URL="${MEET_URL}?authuser=l08483088@gmail.com"
+fi
+
+# Strip any existing luna parameter and force luna=true for extension bot-mode activation
+MEET_URL=$(echo "$MEET_URL" | sed -E 's/([&?])luna=[^&]*&?/\1/g' | sed -E 's/\?$//' | sed -E 's/&$//')
+if [[ "$MEET_URL" == *"?"* ]]; then
+    MEET_URL="${MEET_URL}&luna=true"
+else
+    MEET_URL="${MEET_URL}?luna=true"
+fi
+
 echo "Launching Google Chrome with Luna 2.0 Extension..."
 echo "Target Meet URL: $MEET_URL"
 
 # macOS Google Chrome path
 CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
-# Start Google Chrome
-"$CHROME_PATH" \
-  --user-data-dir="/tmp/luna_chrome_meet_profile" \
-  --load-extension="/Users/charitydupont/.gemini/jetski/scratch/agent-live/meet-extension" \
-  --no-first-run \
-  --disable-blink-features=AutomationControlled \
-  "$MEET_URL"
+# Place profile inside the home folder to inherit permissions and avoid lock conflicts
+PROFILE_DIR="/Users/charitydupont/LunaMeetProfile"
+
+# Clear previous session data safely (disabled to persist logged-in Google account cookies)
+# rm -rf "$PROFILE_DIR"
+mkdir -p "$PROFILE_DIR"
+
+
+# Start Google Chrome in a single command line with verified macOS-safe flags (no mock device to prevent AudioContext errors)
+"$CHROME_PATH" --user-data-dir="$PROFILE_DIR" --load-extension="/Users/charitydupont/Desktop/Luna 2.0 Meet Companion/meet-extension" --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --remote-debugging-port=9223 --allow-insecure-localhost --ignore-certificate-errors --autoplay-policy=no-user-gesture-required "$MEET_URL"
+
+
+
+

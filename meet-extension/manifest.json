@@ -15,5 +15,17 @@
       "run_at": "document_end"
     }
   ],
-  "permissions": ["activeTab"]
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "http://127.0.0.1:8000/*"
+  ],
+  "permissions": ["activeTab"],
+  "web_accessible_resources": [
+    {
+      "resources": ["orb-injector.js"],
+      "matches": ["https://meet.google.com/*"]
+    }
+  ]
 }
