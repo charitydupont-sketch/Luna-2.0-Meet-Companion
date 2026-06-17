@@ -17,7 +17,7 @@ joined_events = set()
 def get_access_token():
     try:
         # Obtain user's gcloud authenticated application default credentials access token
-        return subprocess.check_output(["gcloud", "auth", "application-default", "print-access-token"]).decode("utf-8").strip()
+        return subprocess.check_output(["/Users/charitydupont/Downloads/google-cloud-sdk 2/bin/gcloud", "auth", "application-default", "print-access-token"]).decode("utf-8").strip()
     except Exception as e:
         print(f"[Calendar Poller Error] Failed to get OAuth token: {e}", file=sys.stderr)
         return None

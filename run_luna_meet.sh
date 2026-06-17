@@ -7,13 +7,9 @@ if [ -z "$MEET_URL" ]; then
     exit 1
 fi
 
-# Strip any existing authuser parameter and force Luna's dedicated Gmail account (l08483088@gmail.com)
+# Strip any existing authuser parameter to allow guest join
 MEET_URL=$(echo "$MEET_URL" | sed -E 's/([&?])authuser=[^&]*&?/\1/g' | sed -E 's/\?$//' | sed -E 's/&$//')
-if [[ "$MEET_URL" == *"?"* ]]; then
-    MEET_URL="${MEET_URL}&authuser=l08483088@gmail.com"
-else
-    MEET_URL="${MEET_URL}?authuser=l08483088@gmail.com"
-fi
+
 
 # Strip any existing luna parameter and force luna=true for extension bot-mode activation
 MEET_URL=$(echo "$MEET_URL" | sed -E 's/([&?])luna=[^&]*&?/\1/g' | sed -E 's/\?$//' | sed -E 's/&$//')

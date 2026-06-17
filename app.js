@@ -1044,6 +1044,46 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.btnToggleChat.addEventListener('click', () => toggleChatPanel());
     elements.btnCloseChat.addEventListener('click', () => toggleChatPanel(false));
     
+    // 12. Quick Connect Event Listener
+    const btnQuickConnect = document.getElementById('btn-quick-connect');
+    const quickMeetUrl = document.getElementById('quick-meet-url');
+    
+    if (btnQuickConnect && quickMeetUrl) {
+        btnQuickConnect.addEventListener('click', () => {
+            const url = quickMeetUrl.value.trim();
+            if (!url) {
+                showToast("Please enter a Google Meet link.");
+                return;
+            }
+            showToast("Adding Luna 2.0 to Call...");
+            btnQuickConnect.textContent = 'Connecting...';
+            btnQuickConnect.disabled = true;
+            
+            fetch('/api/join-meet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btnQuickConnect.textContent = 'Connect Luna';
+                btnQuickConnect.disabled = false;
+                if (data.success) {
+                    showToast("Luna 2.0 has joined the call!");
+                    quickMeetUrl.value = '';
+                } else {
+                    showToast("Connection failed: " + data.error);
+                }
+            })
+            .catch(err => {
+                console.error("Quick join error:", err);
+                showToast("Failed to connect Luna 2.0. Check server status.");
+                btnQuickConnect.textContent = 'Connect Luna';
+                btnQuickConnect.disabled = false;
+            });
+        });
+    }
+
     window.addEventListener('click', (e) => {
         if (e.target.classList.contains('modal-overlay')) {
             e.target.classList.remove('open');
