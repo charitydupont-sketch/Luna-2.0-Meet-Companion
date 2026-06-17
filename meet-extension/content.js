@@ -2,6 +2,7 @@
 
 if (window.self === window.top && window.location.search.includes('luna=true')) {
     console.log("[Luna 2.0 Content Script] Bot mode active. Starting native script injection...");
+    const processedMessageIds = new Set();
 
 // // 1. Inject the WebRTC interception script into the webpage context
 function injectInterceptionScript() {
@@ -110,10 +111,23 @@ chrome.runtime.onMessage.addListener((message) => {
 let observedContainer = null;
 function setupChatObserver() {
     // Select the polite aria-live container where new chat messages are appended in Google Meet
-    const container = document.querySelector('div[aria-live="polite"]');
+    const container = document.querySelector('div[jsname="xySENc"]') || 
+                      document.querySelector('div[aria-live="polite"].Ge9Kpc') || 
+                      document.querySelector('div[aria-live="polite"]');
     if (!container) return;
 
     if (observedContainer === container) return;
+    
+    // Scan existing history to populate processed list before observing
+    container.querySelectorAll('div.QTZ77').forEach(textNode => {
+        textNode.setAttribute('data-luna-processed', 'true');
+        const messageEl = textNode.closest('.RLrADb') || textNode.closest('[data-message-id]');
+        const messageId = messageEl ? messageEl.getAttribute('data-message-id') : null;
+        if (messageId) {
+            processedMessageIds.add(messageId);
+        }
+    });
+
     observedContainer = container;
 
     contentLog("[Luna 2.0 Extension] Chat container found. Injecting chat listener MutationObserver.");
@@ -134,9 +148,16 @@ function setupChatObserver() {
                                 if (textNode.getAttribute('data-luna-processed') === 'true') return;
                                 textNode.setAttribute('data-luna-processed', 'true');
 
+                                const messageEl = textNode.closest('.RLrADb') || textNode.closest('[data-message-id]');
+                                const messageId = messageEl ? messageEl.getAttribute('data-message-id') : null;
+                                if (messageId) {
+                                    if (processedMessageIds.has(messageId)) return;
+                                    processedMessageIds.add(messageId);
+                                }
+
                                 const text = textNode.textContent?.trim();
                                 if (text) {
-                                    contentLog(`[Luna 2.0 Extension] Captured chat from ${senderName}: ${text}`);
+                                    contentLog(`[Luna 2.0 Extension] Captured chat from ${senderName}: ${text} (ID: ${messageId})`);
                                     window.postMessage({
                                         type: 'MEET_TO_LUNA',
                                         payload: {

@@ -142,8 +142,15 @@ const server = http.createServer((req, res) => {
                 }
 
                 // Serve the WAV file
-                res.writeHead(200, { 'Content-Type': 'audio/wav' });
                 const stream = fs.createReadStream(wavPath);
+                stream.on('error', (streamErr) => {
+                    console.error('[TTS Server Error] Read stream failed:', streamErr.message);
+                    if (!res.headersSent) {
+                        res.writeHead(500, { 'Content-Type': 'text/plain' });
+                        res.end('File read error');
+                    }
+                });
+                res.writeHead(200, { 'Content-Type': 'audio/wav' });
                 stream.pipe(res);
 
                 // Clean up WAV file after sending
@@ -163,6 +170,7 @@ const server = http.createServer((req, res) => {
         req.on('end', () => {
             try {
                 const event = JSON.parse(body);
+                console.log("[Server Reflector] Received event to-hub:", JSON.stringify(event));
                 queueToHub.push(event);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true }));
@@ -180,6 +188,7 @@ const server = http.createServer((req, res) => {
         req.on('end', () => {
             try {
                 const event = JSON.parse(body);
+                console.log("[Server Reflector] Received event to-meet:", JSON.stringify(event));
                 queueToMeet.push(event);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true }));

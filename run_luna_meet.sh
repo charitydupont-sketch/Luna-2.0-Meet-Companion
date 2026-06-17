@@ -33,8 +33,8 @@ PROFILE_DIR="/Users/charitydupont/LunaMeetProfile"
 mkdir -p "$PROFILE_DIR"
 
 
-# Start Google Chrome in a single command line with verified macOS-safe flags (no mock device to prevent AudioContext errors)
-"$CHROME_PATH" --user-data-dir="$PROFILE_DIR" --load-extension="/Users/charitydupont/Desktop/Luna 2.0 Meet Companion/meet-extension" --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --remote-debugging-port=9223 --allow-insecure-localhost --ignore-certificate-errors --autoplay-policy=no-user-gesture-required "$MEET_URL"
+# Start Google Chrome forcing a new isolated instance on macOS
+open -n -a "Google Chrome" --args --user-data-dir="$PROFILE_DIR" --load-extension="/Users/charitydupont/Desktop/Luna 2.0 Meet Companion/meet-extension" --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --remote-debugging-port=9223 --allow-insecure-localhost --ignore-certificate-errors --autoplay-policy=no-user-gesture-required "$MEET_URL"
 
 
 
