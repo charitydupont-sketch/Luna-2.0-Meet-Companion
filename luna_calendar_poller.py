@@ -41,44 +41,59 @@ def poll_calendar():
     })
     
     url = f"https://www.googleapis.com/calendar/v3/calendars/primary/events?{params}"
-    
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "X-Goog-User-Project": "charitydupont"
-    }
-    
-    req = urllib.request.Request(url, headers=headers, method="GET")
     context = ssl._create_unverified_context()
     
+    # Try with billing project header first
+    res_data = None
     try:
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "X-Goog-User-Project": "charitydupont"
+        }
+        req = urllib.request.Request(url, headers=headers, method="GET")
         with urllib.request.urlopen(req, context=context) as response:
             res_data = json.loads(response.read().decode("utf-8"))
-            
-            for event in res_data.get("items", []):
-                event_id = event.get("id")
-                summary = event.get("summary", "No Title")
-                hangout_link = event.get("hangoutLink")
-                
-                if not hangout_link:
-                    continue
-                
-                # Check attendees
-                attendees = event.get("attendees", [])
-                luna_invited = any(a.get("email") == LUNA_EMAIL for a in attendees)
-                
-                if luna_invited and event_id not in joined_events:
-                    print(f"\n[Calendar Poller] Detected active meeting invite for Luna: \"{summary}\"")
-                    print(f"[Calendar Poller] Meet URL: {hangout_link}")
-                    
-                    # Trigger local join-meet API
-                    trigger_join(hangout_link)
-                    joined_events.add(event_id)
-                    
     except urllib.error.HTTPError as e:
-        print(f"[Calendar Poller Error] HTTP {e.code}: {e.read().decode('utf-8')}", file=sys.stderr)
+        if e.code in (400, 403):
+            # Fallback and try without the billing project header (required for personal Google accounts)
+            try:
+                headers = {
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                }
+                req = urllib.request.Request(url, headers=headers, method="GET")
+                with urllib.request.urlopen(req, context=context) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+            except Exception as retry_err:
+                print(f"[Calendar Poller Error] Retry without project header failed: {retry_err}", file=sys.stderr)
+        else:
+            print(f"[Calendar Poller Error] HTTP {e.code}: {e.read().decode('utf-8')}", file=sys.stderr)
     except Exception as e:
         print(f"[Calendar Poller Error] {e}", file=sys.stderr)
+
+    if not res_data:
+        return
+        
+    for event in res_data.get("items", []):
+        event_id = event.get("id")
+        summary = event.get("summary", "No Title")
+        hangout_link = event.get("hangoutLink")
+        
+        if not hangout_link:
+            continue
+        
+        # Check attendees
+        attendees = event.get("attendees", [])
+        luna_invited = any(a.get("email") == LUNA_EMAIL for a in attendees)
+        
+        if luna_invited and event_id not in joined_events:
+            print(f"\n[Calendar Poller] Detected active meeting invite for Luna: \"{summary}\"")
+            print(f"[Calendar Poller] Meet URL: {hangout_link}")
+            
+            # Trigger local join-meet API
+            trigger_join(hangout_link)
+            joined_events.add(event_id)
 
 def trigger_join(meet_url):
     url = "http://127.0.0.1:8000/api/join-meet"
