@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luna 2.0 — Quick Portal</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #07070a;
+            --card-bg: rgba(15, 15, 25, 0.45);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary-glow: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(217, 70, 239, 0.05) 50%, transparent 100%);
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #d946ef 100%);
+            --accent-hover: linear-gradient(135deg, #4f46e5 0%, #c084fc 100%);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Ambient background glow */
+        .ambient-glow {
+            position: absolute;
+            width: 140vw;
+            height: 140vh;
+            background: var(--primary-glow);
+            top: -20%;
+            left: -20%;
+            z-index: 1;
+            pointer-events: none;
+            animation: pulse-glow 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            0% { transform: scale(0.9) rotate(0deg); opacity: 0.8; }
+            100% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+        }
+
+        /* Portal card container */
+        .portal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px 48px;
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            z-index: 10;
+            position: relative;
+            transform: translateY(20px);
+            opacity: 0;
+            animation: card-appear 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes card-appear {
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Decorative top accent line */
+        .card-header-glow {
+            position: absolute;
+            top: -1px;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: var(--accent-gradient);
+            filter: blur(1px);
+        }
+
+        .avatar-container {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+        }
+
+        .avatar-pulse {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 1px solid rgba(217, 70, 239, 0.4);
+            animation: pulse-ring 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+            pointer-events: none;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { opacity: 0.5; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+
+        .avatar-icon {
+            width: 42px;
+            height: 42px;
+            fill: none;
+            stroke: #c084fc;
+            stroke-width: 1.5;
+            animation: float-icon 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes float-icon {
+            0% { transform: translateY(-2px); }
+            100% { transform: translateY(2px); }
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff 30%, #e2e8f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 350;
+            line-height: 1.5;
+            margin-bottom: 32px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        input {
+            width: 100%;
+            padding: 16px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 0.95rem;
+            font-weight: 400;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 15px rgba(99, 102, 241, 0.15);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-deploy {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: var(--accent-gradient);
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
+        }
+
+        .btn-deploy::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .btn-deploy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(99, 102, 241, 0.35);
+        }
+
+        .btn-deploy:hover::before {
+            left: 100%;
+        }
+
+        .btn-deploy:active {
+            transform: translateY(1px);
+        }
+
+        .btn-deploy:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.2);
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Premium Toast notification system */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translate(-50%, 40px);
+            background: rgba(15, 15, 25, 0.9);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(10px);
+        }
+
+        .toast.show {
+            transform: translate(-50%, 0);
+            opacity: 1;
+        }
+
+        .toast-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+        }
+
+        .toast-text {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #f3f4f6;
+        }
+
+        /* Minimalist Footer */
+        .footer {
+            position: absolute;
+            bottom: 24px;
+            color: rgba(255, 255, 255, 0.15);
+            font-size: 0.75rem;
+            font-family: 'Fira Code', monospace;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow"></div>
+    
+    <div class="portal-card">
+        <div class="card-header-glow"></div>
+        
+        <div class="avatar-container">
+            <div class="avatar-pulse"></div>
+            <svg class="avatar-icon" viewBox="0 0 24 24">
+                <path stroke="currentColor" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+                <path stroke="currentColor" d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4z"/>
+            </svg>
+        </div>
+        
+        <h2>Quick Portal</h2>
+        <p>Deploy Luna 2.0 directly into any active Google Meet session</p>
+        
+        <div class="input-group">
+            <input type="text" id="meet-url" placeholder="Paste Google Meet Link or Code..." autocomplete="off">
+        </div>
+        
+        <button class="btn-deploy" id="btn-connect">Deploy Luna</button>
+    </div>
+
+    <div class="toast" id="toast-notify">
+        <div class="toast-status" id="toast-status"></div>
+        <span class="toast-text" id="toast-message">Adding Luna to call...</span>
+    </div>
+
+    <div class="footer">
+        luna_meet_companion_v2.0
+    </div>
+
+    <script>
+        const btnConnect = document.getElementById('btn-connect');
+        const inputUrl = document.getElementById('meet-url');
+        const toast = document.getElementById('toast-notify');
+        const toastMessage = document.getElementById('toast-message');
+        const toastStatus = document.getElementById('toast-status');
+
+        function showNotification(msg, isError = false) {
+            toastMessage.textContent = msg;
+            toastStatus.style.background = isError ? '#ef4444' : '#10b981';
+            toastStatus.style.boxShadow = isError ? '0 0 10px #ef4444' : '0 0 10px #10b981';
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        btnConnect.addEventListener('click', () => {
+            const url = inputUrl.value.trim();
+            if (!url) {
+                showNotification("Please enter a meeting URL or code", true);
+                return;
+            }
+
+            // Normalise 10 letter code (e.g. abc-defg-hij) to full meet url
+            let targetUrl = url;
+            if (/^[a-z]{3}-[a-z]{4}-[a-z]{3}$/.test(url)) {
+                targetUrl = `https://meet.google.com/${url}`;
+            }
+
+            btnConnect.textContent = 'Deploying...';
+            btnConnect.disabled = true;
+            showNotification("Deploying Luna 2.0 to call...");
+
+            fetch('/api/join-meet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: targetUrl })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btnConnect.textContent = 'Deploy Luna';
+                btnConnect.disabled = false;
+                if (data.success) {
+                    showNotification("Luna has successfully joined the call!");
+                    inputUrl.value = '';
+                } else {
+                    showNotification(data.error || "Failed to add Luna to call", true);
+                }
+            })
+            .catch(err => {
+                btnConnect.textContent = 'Deploy Luna';
+                btnConnect.disabled = false;
+                showNotification("Error: " + err.message, true);
+            });
+        });
+        
+        // Trigger deploy on enter keypress
+        inputUrl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                btnConnect.click();
+            }
+        });
+    </script>
+</body>
+</html>

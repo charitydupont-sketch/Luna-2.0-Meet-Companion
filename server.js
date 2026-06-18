@@ -250,7 +250,10 @@ const server = http.createServer((req, res) => {
 
 
     // Static Files Server routing
-    let filePath = path.join(PUBLIC_DIR, req.url === '/' ? 'index.html' : req.url);
+    let target = req.url;
+    if (target === '/') target = 'index.html';
+    else if (target === '/connect' || target === '/join') target = 'connect.html';
+    let filePath = path.join(PUBLIC_DIR, target);
     
     // Security check: Prevent directory traversal outside web root
     const relative = path.relative(PUBLIC_DIR, filePath);
