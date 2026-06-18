@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Poll server for incoming events from the Google Meet call
     setInterval(() => {
-        fetch('/api/events/poll-hub')
+        fetch('/api/events/poll-app')
             .then(res => res.json())
             .then(events => {
                 events.forEach(event => {

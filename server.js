@@ -19,6 +19,7 @@ const MIME_TYPES = {
 };
 
 let queueToHub = [];
+let queueToApp = [];
 let queueToMeet = [];
 let activeMeetProcess = null;
 
@@ -42,6 +43,7 @@ const server = http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
 
     if (req.method === 'OPTIONS') {
         res.writeHead(204);
@@ -189,6 +191,7 @@ const server = http.createServer((req, res) => {
                 const event = JSON.parse(body);
                 console.log("[Server Reflector] Received event to-hub:", JSON.stringify(event));
                 queueToHub.push(event);
+                queueToApp.push(event);
                 
                 // Server-side orchestration brain
                 handleServerOrchestration(event);
@@ -224,6 +227,14 @@ const server = http.createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/api/events/poll-hub') {
         const events = queueToHub;
         queueToHub = [];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(events));
+        return;
+    }
+
+    if (req.method === 'GET' && req.url === '/api/events/poll-app') {
+        const events = queueToApp;
+        queueToApp = [];
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(events));
         return;

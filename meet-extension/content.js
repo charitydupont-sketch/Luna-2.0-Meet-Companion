@@ -67,6 +67,10 @@ if (window.self === window.top && window.location.search.includes('luna=true')) 
 
 // // 1. Inject the WebRTC interception script into the webpage context
 function injectInterceptionScript() {
+    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getManifest) {
+        contentLog("[Luna 2.0 Content Script] Running in page context. Skipping redundant interception script injection...");
+        return;
+    }
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL('orb-injector.js');
     
@@ -94,7 +98,9 @@ function injectInterceptionScript() {
 // Logger for content script isolated world (forwards logs directly to background service worker)
 function contentLog(msg) {
     console.log("[Luna 2.0 Content Script]", msg);
-    chrome.runtime.sendMessage({ type: 'BROWSER_LOG', message: msg });
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({ type: 'BROWSER_LOG', message: msg });
+    }
 }
 
 // Run injection immediately
@@ -147,20 +153,46 @@ window.addEventListener('message', (e) => {
         }
 
         if (payload && payload.type === 'FETCH_TTS') {
-            chrome.runtime.sendMessage({ type: 'FETCH_TTS', text: payload.text }, (response) => {
-                if (response && response.success) {
-                    window.postMessage({
-                        type: 'LUNA_AUDIO_DATA',
-                        dataUrl: response.dataUrl
-                    }, '*');
-                } else {
-                    window.postMessage({
-                        type: 'LUNA_AUDIO_ERROR',
-                        text: payload.text,
-                        error: response?.error || 'Unknown error'
-                    }, '*');
-                }
-            });
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest && chrome.runtime.sendMessage) {
+                chrome.runtime.sendMessage({ type: 'FETCH_TTS', text: payload.text }, (response) => {
+                    if (response && response.success) {
+                        window.postMessage({
+                            type: 'LUNA_AUDIO_DATA',
+                            dataUrl: response.dataUrl
+                        }, '*');
+                    } else {
+                        window.postMessage({
+                            type: 'LUNA_AUDIO_ERROR',
+                            text: payload.text,
+                            error: response?.error || 'Unknown error'
+                        }, '*');
+                    }
+                });
+            } else {
+                const ttsUrl = `http://127.0.0.1:8000/api/tts?text=${encodeURIComponent(payload.text)}`;
+                fetch(ttsUrl)
+                    .then(res => {
+                        if (!res.ok) throw new Error("TTS fetch failed");
+                        return res.blob();
+                    })
+                    .then(blob => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            window.postMessage({
+                                type: 'LUNA_AUDIO_DATA',
+                                dataUrl: reader.result
+                            }, '*');
+                        };
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(err => {
+                        window.postMessage({
+                            type: 'LUNA_AUDIO_ERROR',
+                            text: payload.text,
+                            error: err.message
+                        }, '*');
+                    });
+            }
             return;
         }
 
@@ -426,8 +458,8 @@ function sendMeetChatMessage(text) {
         // Find send button
         const buttons = Array.from(document.querySelectorAll('button'));
         const sendBtn = buttons.find(btn => {
-            const label = btn.getAttribute('aria-label') || '';
-            return label.toLowerCase().includes('send');
+            const label = (btn.getAttribute('aria-label') || '').toLowerCase();
+            return label === 'send a message' || label === 'send message';
         });
         
         if (sendBtn) {
@@ -482,7 +514,7 @@ function ensureUnmuted() {
                         window.postMessage({ type: 'LUNA_SYNC', payload: event }, '*');
                     });
                 })
-                .catch(err => {});
+                .catch(err => { contentLog("[Luna 2.0 Extension] Poll error: " + err.message); });
         }, 200);
     }
 
