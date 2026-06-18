@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      width: 280px;
+      padding: 16px;
+      font-family: 'Google Sans', Roboto, sans-serif;
+      margin: 0;
+    }
+    h1 {
+      font-size: 16px;
+      margin: 0 0 12px 0;
+      color: #202124;
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .toggle-label {
+      font-size: 14px;
+      color: #3c4043;
+    }
+    .toggle-desc {
+      font-size: 12px;
+      color: #5f6368;
+      margin-top: 4px;
+    }
+    .switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #dadce0;
+      transition: .2s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    input:checked + .slider {
+      background-color: #1a73e8;
+    }
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    .status {
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .status.active {
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+    .status.inactive {
+      background: #f5f5f5;
+      color: #757575;
+    }
+    .footer {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #9aa0a6;
+    }
+  </style>
+</head>
+<body>
+  <h1>Thoughtform</h1>
+  <a href="https://go/thoughtform">go/thoughtform</a>
+  <div class="toggle-row">
+    <div>
+      <div class="toggle-label">Caption Capture</div>
+      <div class="toggle-desc">Auto-enable CC when active</div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="captureToggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+  
+  <div id="status" class="status inactive">
+    Capture disabled
+  </div>
+  
+  <div class="footer">
+    When enabled, captions will be captured from Google Meet calls.
+    <br><br>
+    <a href="#" id="openExperiment">Open Transcript Viewer</a>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

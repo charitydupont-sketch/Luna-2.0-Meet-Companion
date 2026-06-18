@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Force override Chrome's injected extension styles */
+    html { font-size: 16px !important; line-height: 1.5 !important; }
+    body {
+      margin: 0 !important;
+      font-family: 'Inter', ui-sans-serif, system-ui, sans-serif !important;
+      height: 100vh;
+      width: 100%;
+      background: #f9fafb;
+      font-size: 14px;
+      overflow: hidden;
+    }
+    
+    /* ─── Login View ─── */
+    .login-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #ffffff;
+      padding: 32px 24px;
+      text-align: center;
+    }
+    
+    .login-logo {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 24px;
+      border-radius: 18px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .login-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #202124;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    
+    .login-subtitle {
+      font-size: 14px;
+      color: #5f6368;
+      margin-bottom: 36px;
+      line-height: 1.6;
+      max-width: 280px;
+    }
+    
+    .login-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 28px;
+      background: #ffffff;
+      color: #3c4043;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      border: 1px solid #dadce0;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .login-btn:hover {
+      background: #f8f9fa;
+      border-color: #dadce0;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    .login-btn:active {
+      transform: translateY(0);
+    }
+    
+    .login-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .login-error {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #d93025;
+      max-width: 280px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .login-error.visible {
+      opacity: 1;
+    }
+    
+    .login-skip {
+      margin-top: 24px;
+      font-size: 13px;
+      color: rgb(11, 87, 208);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: color 0.2s;
+      font-weight: 500;
+    }
+    
+    .login-skip:hover {
+      color: #1557b0;
+      text-decoration: underline;
+    }
+
+    /* ─── User Badge ─── */
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 3px;
+      cursor: pointer;
+      border-radius: 50%;
+      transition: background 0.15s;
+    }
+    
+    .user-badge:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+    
+    .user-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(99, 102, 241, 0.3);
+    }
+    
+    .user-avatar-placeholder {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: white;
+      border: 2px solid rgba(99, 102, 241, 0.3);
+    }
+    
+    /* ─── Content Frame ─── */
+    .content-frame {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* ─── Toolbar ─── */
+    .toolbar {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      background: white;
+      border-radius: 9999px;
+      padding: 4px;
+      align-items: center;
+      gap: 2px;
+      z-index: 10;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    .toolbar__btn {
+      padding: 6px;
+      border-radius: 9999px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toolbar__btn:hover {
+      background: #f3f4f6;
+    }
+
+    .toolbar__btn svg {
+      width: 20px;
+      height: 20px;
+      fill: #4b5563;
+    }
+    
+    /* ─── Home Button ─── */
+    .home-btn {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: white;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      transition: background 0.15s, transform 0.15s;
+    }
+    .home-btn:hover {
+      background: #f3f4f6;
+      transform: translateY(-1px);
+    }
+    .home-btn:active {
+      transform: translateY(0);
+    }
+    .home-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: #4b5563;
+    }
+
+    /* ─── Quick Start Button ─── */
+    .sidepanel-quick-start {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 20px;
+      background: rgb(11, 87, 208);
+      color: #ffffff;
+      border: none;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+      transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+      height: 40px;
+      line-height: 1;
+    }
+    .sidepanel-quick-start:hover {
+      background: rgb(102, 157, 246);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(11, 87, 208, 0.2), 0 4px 16px rgba(11, 87, 208, 0.15);
+    }
+    .sidepanel-quick-start:active {
+      transform: translateY(0);
+    }
+
+    /* ─── Pause Button in Toolbar ─── */
+    .toolbar__btn--pause svg {
+      width: 18px;
+      height: 18px;
+    }
+    .toolbar__btn--pause.running svg {
+      fill: #5f6368;
+    }
+    .toolbar__btn--pause.paused svg {
+      fill: rgb(11, 87, 208);
+    }
+
+    /* ─── Analyzing Dot ─── */
+    .analyzing-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #dadce0;
+      margin: 0 8px 0 6px;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .analyzing-dot--active {
+      background: rgb(11, 87, 208);
+      animation: analyzePulse 1.5s ease-in-out infinite;
+    }
+    @keyframes analyzePulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(11, 87, 208, 0.5);
+      }
+      50% {
+        box-shadow: 0 0 8px 3px rgba(11, 87, 208, 0.35);
+      }
+    }
+
+    /* ─── End Session Button ─── */
+    .toolbar__end-btn {
+      padding: 4px 12px;
+      border-radius: 9999px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      color: #d93025;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+      display: none;
+    }
+    .toolbar__end-btn:hover {
+      background: rgba(217, 48, 37, 0.08);
+    }
+
+    /* ─── Context Files Icon ─── */
+    .toolbar__btn--context {
+      position: relative;
+    }
+    .toolbar__btn--context svg {
+      width: 18px;
+      height: 18px;
+      fill: #9aa0a6; /* grey default */
+      transition: fill 0.3s;
+    }
+    .toolbar__btn--context.context--fetching svg {
+      fill: #9aa0a6;
+      animation: contextPulse 1.2s ease-in-out infinite;
+    }
+    .toolbar__btn--context.context--loaded svg {
+      fill: rgb(11, 87, 208);
+      animation: none;
+    }
+    @keyframes contextPulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.92); }
+      50% { opacity: 1; transform: scale(1.08); }
+    }
+
+    /* ─── Context Files Hover Popup ─── */
+    .context-popup {
+      position: fixed;
+      top: 44px;
+      right: 12px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04);
+      min-width: 220px;
+      max-width: 280px;
+      z-index: 14;
+      padding: 0;
+      opacity: 0;
+      transform: translateY(-4px) scale(0.97);
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      overflow: hidden;
+    }
+    .context-popup.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .context-popup__header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgb(11, 87, 208);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .context-popup__header svg {
+      width: 14px;
+      height: 14px;
+      fill: rgb(11, 87, 208);
+    }
+    .context-popup__empty {
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #9aa0a6;
+      text-align: center;
+    }
+    .context-popup__list {
+      padding: 4px 0 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .context-popup__item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      font-size: 12px;
+      color: #3c4043;
+      transition: background 0.12s;
+    }
+    .context-popup__item:hover {
+      background: #f1f3f4;
+    }
+    .context-popup__item-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .context-popup__item-name {
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+    }
+    .context-popup__item-remove {
+      background: none;
+      border: none;
+      color: #9aa0a6;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 2px;
+      line-height: 1;
+      flex-shrink: 0;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+    }
+    .context-popup__item-remove:hover {
+      color: #d93025;
+      background: rgba(217, 48, 37, 0.08);
+    }
+    .context-popup__fetching {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #5f6368;
+    }
+    .context-popup__fetching-dots {
+      display: flex;
+      gap: 3px;
+    }
+    .context-popup__fetching-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgb(11, 87, 208);
+      animation: dotPulse 1.4s ease-in-out infinite;
+    }
+    .context-popup__fetching-dot:nth-child(2) { animation-delay: 0.2s; }
+    .context-popup__fetching-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotPulse {
+      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+      40% { opacity: 1; transform: scale(1.1); }
+    }
+    
+    /* ─── Overflow menu ─── */
+    .overflow-menu {
+      position: fixed;
+      top: 44px;
+      right: 12px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04);
+      min-width: 200px;
+      z-index: 15;
+      padding: 4px 0;
+      opacity: 0;
+      transform: translateY(-4px) scale(0.97);
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .overflow-menu.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .overflow-menu__item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      font-size: 13px;
+      color: #3c4043;
+      cursor: pointer;
+      transition: background 0.12s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+    }
+    .overflow-menu__item:hover {
+      background: #f1f3f4;
+    }
+    .overflow-menu__item svg {
+      width: 18px;
+      height: 18px;
+      fill: #5f6368;
+      flex-shrink: 0;
+    }
+    .overflow-menu__item--accent {
+      color: #4f46e5;
+    }
+    .overflow-menu__item--accent svg {
+      fill: #4f46e5;
+    }
+    .overflow-menu__item--danger {
+      color: #dc2626;
+    }
+    .overflow-menu__item--danger svg {
+      fill: #dc2626;
+    }
+    .overflow-menu__sep {
+      height: 1px;
+      background: #e8eaed;
+      margin: 4px 0;
+    }
+    /* Zoom control row */
+    .overflow-menu__zoom {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 14px;
+    }
+    .overflow-menu__zoom-label {
+      font-size: 13px;
+      color: #3c4043;
+      margin-right: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .overflow-menu__zoom-label svg {
+      width: 18px;
+      height: 18px;
+      fill: #5f6368;
+      flex-shrink: 0;
+    }
+    .zoom-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid #dadce0;
+      background: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 500;
+      color: #3c4043;
+      transition: background 0.12s;
+      padding: 0;
+      line-height: 1;
+    }
+    .zoom-btn:hover {
+      background: #f1f3f4;
+    }
+    .zoom-btn:active {
+      background: #e8eaed;
+    }
+    .zoom-level {
+      font-size: 12px;
+      font-weight: 500;
+      color: #5f6368;
+      min-width: 36px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ─── Toast ─── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: white;
+      font-size: 12px;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      z-index: 30;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    /* ─── Fade transitions ─── */
+    .fade-in {
+      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  
+  <!-- Login View (shown when not signed in) -->
+  <div id="loginView" class="login-view" style="display: none;">
+    <img id="loginLogo" class="login-logo" src="icon/tf_logo_128.png" alt="ThoughtForm">
+    <div class="login-title">ThoughtForm</div>
+    <div class="login-subtitle">
+      Real time agenda tracking and time keeping
+    </div>
+    <button id="signInBtn" class="login-btn">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <div id="loginError" class="login-error"></div>
+  </div>
+  
+  <!-- Floating Home Button (hidden until signed in) -->
+  <button id="homeBtn" class="home-btn" title="Go to Home" style="display: none;">
+    <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+  </button>
+
+  <!-- Full-height iframe (hidden until signed in) -->
+  <iframe id="contentFrame" class="content-frame" style="display: none;"></iframe>
+  
+  <!-- Floating toolbar (hidden until signed in) -->
+  <div id="toolbar" class="toolbar" style="display: none;">
+    <!-- End Session button -->
+    <button id="toolbarEndBtn" class="toolbar__end-btn" title="End Session">End Session</button>
+    <!-- Analyzing dot indicator -->
+    <div id="analyzingDot" class="analyzing-dot" title="Idle"></div>
+    <!-- Play/Pause button -->
+    <button id="toolbarPauseBtn" class="toolbar__btn toolbar__btn--pause running" title="Pause Session" style="display: none;">
+      <svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+    </button>
+    <!-- Context files icon -->
+    <button id="contextFilesBtn" class="toolbar__btn toolbar__btn--context" title="Context files" style="display: none;">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+    </button>
+    <!-- Overflow menu button (⋮) -->
+    <button id="overflowBtn" class="toolbar__btn" title="More options">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+      </svg>
+    </button>
+  </div>
+  
+  <!-- Overflow dropdown menu -->
+  <div id="overflowMenu" class="overflow-menu">
+    <!-- Quick start session -->
+    <button id="menuQuickStart" class="overflow-menu__item" style="display: none;">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      Quick Start
+    </button>
+
+    <!-- Pause/Resume session -->
+    <button id="menuPauseResume" class="overflow-menu__item" style="display: none;">
+      <svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+      Pause session
+    </button>
+
+    <!-- Share session link -->
+    <button id="menuShare" class="overflow-menu__item">
+      <svg viewBox="0 0 24 24">
+        <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+      </svg>
+      Share session link
+    </button>
+
+    <button id="menuCopy" class="overflow-menu__item">
+      <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+      Copy transcript
+    </button>
+    <button id="menuReset" class="overflow-menu__item">
+      <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      Reset transcript
+    </button>
+    <div class="overflow-menu__sep"></div>
+    
+    <!-- Connect Calendar & Drive (only shown when not connected) -->
+    <button id="menuCalDrive" class="overflow-menu__item overflow-menu__item--accent">
+      <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
+      Connect Calendar &amp; Drive
+    </button>
+
+    <!-- Date controls -->
+    <div id="menuDateNav" class="overflow-menu__zoom" style="display: none;">
+      <span class="overflow-menu__zoom-label">
+        <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
+        Date
+      </span>
+      <button id="menuDatePrev" class="zoom-btn" title="Previous day" style="display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor;"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+      </button>
+      <span id="menuDateLabel" class="zoom-level" style="min-width: 72px; cursor: pointer;" title="Reset to Today">Today</span>
+      <button id="menuDateNext" class="zoom-btn" title="Next day" style="display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor;"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+      </button>
+    </div>
+
+    <!-- Zoom controls -->
+    <div class="overflow-menu__zoom">
+      <span class="overflow-menu__zoom-label">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        Zoom
+      </span>
+      <button id="zoomOut" class="zoom-btn" title="Zoom out">−</button>
+      <span id="zoomLevel" class="zoom-level">100%</span>
+      <button id="zoomIn" class="zoom-btn" title="Zoom in">+</button>
+    </div>
+
+    <div class="overflow-menu__sep"></div>
+    <button id="menuSignOut" class="overflow-menu__item overflow-menu__item--danger">
+      <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+      Sign out
+    </button>
+  </div>
+
+  <!-- Context Files Hover Popup -->
+  <div id="contextPopup" class="context-popup">
+    <div class="context-popup__header">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+      Context Files
+    </div>
+    <div id="contextPopupBody"></div>
+  </div>
+  
+  <!-- Toast notification -->
+  <div id="toast" class="toast">Copied!</div>
+  
+  <script src="auth.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

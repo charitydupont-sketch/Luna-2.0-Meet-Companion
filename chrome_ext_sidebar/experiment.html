@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThoughtForm Live Captions</title>
+  <style>
+    body {
+      background-color: #f3f4f6;
+      padding: 20px;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+      font-size: 14px;
+      color: #1f2937;
+      margin: 0;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+    .status {
+      color: #6b7280;
+      font-style: italic;
+      margin-bottom: 16px;
+    }
+    .status--blue {
+      color: #2563eb;
+    }
+    .status--gray {
+      color: #6b7280;
+    }
+    .status--green {
+      color: #16a34a;
+    }
+    .stats-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .badge {
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #ffffff;
+    }
+    .badge-blue {
+      background-color: #2563eb;
+    }
+    .badge-green {
+      background-color: #16a34a;
+    }
+    .names {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .segments-container {
+      max-width: 42rem;
+    }
+    
+    /* Segment Styles */
+    .segment {
+      background-color: #ffffff;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 12px;
+      border-left: 4px solid #d1d5db;
+      transition: border-color 0.2s;
+    }
+    .segment--new {
+      border-left-color: #9ca3af;
+    }
+    .segment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .segment-speaker {
+      font-weight: 600;
+      color: #374151;
+    }
+    .segment-timestamp {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .segment-text {
+      color: #4b5563;
+      line-height: 1.625;
+    }
+  </style>
+</head>
+<body>
+  
+  <h1>Live Transcript</h1>
+  
+  <div id="status" class="status">Waiting for captions...</div>
+  
+  <div class="stats-bar">
+    <div id="count" class="badge badge-blue">0 segments</div>
+    <div id="participant-count" class="badge badge-green">0 participants</div>
+    <div id="participant-names" class="names"></div>
+  </div>
+  
+  <div id="segments-container" class="segments-container"></div>
+
+  <script src="experiment.js"></script>
+</body>
+</html>

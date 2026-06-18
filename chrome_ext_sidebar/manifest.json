@@ -1,0 +1,76 @@
+{
+  "manifest_version": 3,
+  "name": "ThoughtForm",
+  "version": "0.4",
+  "description": "Live meeting agenda tracking powered by AI. Captures Google Meet captions and provides real-time agenda insights.",
+  "permissions": ["storage", "activeTab", "tabs", "scripting", "sidePanel", "identity"],
+  "host_permissions": [
+    "https://thoughtform-internal.ue.r.appspot.com/*",
+    "https://*.appspot.com/*",
+    "https://tf-generic-478784405636.us-east1.run.app/*",
+    "https://*.run.app/*",
+    "https://www.googleapis.com/*",
+    "https://people.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "478784405636-jrcu1n71u2eg0ga6flagpluq4r5jdelf.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/calendar.readonly",
+      "https://www.googleapis.com/auth/drive.readonly"
+    ]
+  },
+  "icons": {
+    "16": "icon/tf_logo_16.png",
+    "32": "icon/tf_logo_32.png",
+    "64": "icon/tf_logo_64.png",
+    "128": "icon/tf_logo_128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open Thoughtform",
+    "default_icon": {
+      "16": "icon/tf_logo_16.png",
+      "32": "icon/tf_logo_32.png"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "experiment.html",
+        "experiment.js",
+        "agenda.html",
+        "agenda.css",
+        "agenda.js",
+        "meetings.html",
+        "meetings.css",
+        "meetings.js",
+        "auth.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:*/*",
+      "https://localhost:*/*",
+      "https://*.corp.google.com/*",
+      "https://*.googleplex.com/*",
+      "https://*.run.app/*"
+    ]
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAg/wAu86aayfkDEvVAGgdtl8FS2/axn1JqdDl9awFDUdSLZrCNJ/7vMJBEUp3IpgzBMF+qFH9UZFQJIuyo2vRHnmIXDMVXEfYLmIJ9WfMYQnu8sUvcTilj7zCzaWSyo1/VqGeahsRX18VZBaMyOc4vauSojZFi66ZkR+dd9JoPhbxFFAMrcZkYeoIL27+ofKRy01gCBN/p3kQtowfvQtxGA+5irSqspXPtFIeTY20ZBhGaYR1KXu9wwa9ghtuQPf00Gy8+FyDzFwemawJ3KjlATokTjqEw9Z8ZM1kB6sS0q50xSJUhlbQ+/FMFN0owm7K5UHTSXGOALS8YPnHASeP3wIDAQAB"
+}

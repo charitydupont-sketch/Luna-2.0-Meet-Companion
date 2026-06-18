@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThoughtForm Agenda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="agenda.css">
+  <style>
+    /* Context Documents Banner */
+    .context-banner {
+      display: none;
+      margin: 12px 16px 0;
+      padding: 10px 14px;
+      background: #e8f0fe;
+      border: 1px solid #d2e3fc;
+      border-radius: 12px;
+      animation: fadeIn 0.3s ease;
+    }
+    .context-banner__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .context-banner__title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #1a73e8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .context-banner__clear {
+      font-size: 11px;
+      color: #5f6368;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+    .context-banner__clear:hover { color: #202124; }
+    .context-banner__docs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .context-doc-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: #ffffff;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #3c4043;
+      max-width: 200px;
+    }
+    .context-doc-chip__icon {
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .context-doc-chip__name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .context-doc-chip__remove {
+      background: none;
+      border: none;
+      color: #9aa0a6;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 2px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .context-doc-chip__remove:hover { color: #d93025; }
+
+    /* Back button for when navigating from meetings */
+    .back-btn {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      margin: 12px 16px 0;
+      padding: 6px 10px;
+      background: none;
+      border: none;
+      color: #1a73e8;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+    .back-btn:hover { background: #e8f0fe; }
+    .back-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Back to meetings (shown when navigating from meeting picker) -->
+  <button id="backBtn" class="back-btn">
+    <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    My Meetings
+  </button>
+
+  <!-- Session Bar -->
+  <div id="sessionBar" class="session-bar">
+    <button id="sessionBtn" class="session-bar__btn session-bar__btn--stop">⏸ Pause</button>
+  </div>
+
+  <!-- Context Documents Banner -->
+  <div id="contextBanner" class="context-banner">
+    <div class="context-banner__header">
+      <span class="context-banner__title">📎 Context Documents</span>
+      <button id="contextClearAll" class="context-banner__clear">Clear all</button>
+    </div>
+    <div id="contextDocs" class="context-banner__docs"></div>
+  </div>
+
+  <div class="content">
+    <!-- Empty State (hidden by default, shown when session is paused) -->
+    <div id="emptyState" class="empty-state" style="display:none">
+      <div class="empty-state__title">Session Paused</div>
+      <div class="empty-state__subtitle">Hit Resume to continue tracking this meeting</div>
+    </div>
+
+    <!-- Listening State (shown when session is active but no analysis yet) -->
+    <div id="listeningState" class="empty-state">
+      <div class="empty-state__title">Listening...</div>
+      <div class="empty-state__subtitle">ThoughtForm is active and waiting for conversation</div>
+    </div>
+
+    <!-- Analyzing Indicator (hidden — toolbar dot handles this now) -->
+    <div id="analyzingIndicator" class="analyzing" style="display:none"></div>
+
+    <!-- Progress Header (outside card) -->
+    <div id="progressHeader" class="progress-header" style="display:none">
+      <div class="progress-header__top">
+        <span id="progressCount" class="progress-header__count">0 OF 0 TOPICS</span>
+        <span id="progressElapsed" class="progress-header__elapsed"></span>
+      </div>
+      <div class="progress-header__bar-container">
+        <div id="progressBarFill" class="progress-header__bar-fill" style="width: 0%"></div>
+        <div id="nowNeedle" class="progress-header__now-needle" style="display: none; left: 0%"></div>
+      </div>
+    </div>
+
+    <!-- Timekeeping Alert (standalone card, above agenda) -->
+    <div id="alertBanner" class="timekeeping-alert" style="display:none">
+      <span class="timekeeping-alert__icon">
+        <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+      </span>
+      <div class="timekeeping-alert__content">
+        <div id="alertTitle" class="timekeeping-alert__title"></div>
+        <div id="alertDesc" class="timekeeping-alert__desc"></div>
+      </div>
+    </div>
+
+    <!-- Agenda Card -->
+    <div id="agendaCard" class="agenda-card" style="display:none">
+      <div class="agenda-card__header" style="display:none">
+        <div class="agenda-card__icon">🕐</div>
+        <div class="agenda-card__category">AGENDA</div>
+        <h2 id="agendaHeadline" class="agenda-card__headline">Tracking agenda...</h2>
+      </div>
+      <div id="agendaList" class="agenda-list"></div>
+      <div id="addTopicRow" class="add-topic-row" style="display:none">
+        <span class="add-topic-row__icon">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </span>
+        <span class="add-topic-row__label">Add Topic</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transcript Bar (flat, no title) -->
+  <div id="transcriptBar" class="transcript-bar">
+    <span id="liveIndicator" class="transcript-bar__live" style="display:none">
+      <span class="transcript-bar__live-dot"></span>Live Transcript
+    </span>
+    <div id="latestSegment" class="transcript-bar__latest">Waiting for captions...</div>
+  </div>
+
+  <!-- Error Banner -->
+  <div id="errorBanner" class="error-banner" style="display:none">
+    <span>⚠️</span>
+    <span id="errorText"></span>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast">Copied!</div>
+
+  <script src="auth.js"></script>
+  <script src="agenda.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThoughtForm Meetings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="meetings.css">
+</head>
+<body>
+  <!-- ─── Main: Meeting List ─── -->
+  <div id="meetingsView">
+    <div class="meetings-header">
+      <h1 class="meetings-header__valprop">Real-time agenda tracking</h1>
+      <p class="meetings-header__subtitle">Select a meeting to track agenda real-time</p>
+    </div>
+
+    <!-- Loading -->
+    <div id="meetingsLoading" class="meetings-loading" style="display:none">
+      <div class="meetings-loading__dots">
+        <div class="meetings-loading__dot"></div>
+        <div class="meetings-loading__dot"></div>
+        <div class="meetings-loading__dot"></div>
+      </div>
+      <span>Loading meetings...</span>
+    </div>
+
+    <!-- Empty State -->
+    <div id="meetingsEmpty" class="meetings-empty" style="display:none">
+      <div class="meetings-empty__icon">📅</div>
+      <div class="meetings-empty__title">No meetings</div>
+      <div class="meetings-empty__desc">No meetings found for this day</div>
+    </div>
+
+    <!-- Meeting Cards -->
+    <div id="meetingsList" class="meetings-list"></div>
+  </div>
+
+  <!-- ─── Prep View: Document Context ─── -->
+  <div id="prepView" class="prep-view">
+    <div class="prep-header">
+      <button id="prepBack" class="prep-header__back" title="Back to meetings">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div id="prepTitle" class="prep-header__title">Meeting Prep</div>
+    </div>
+
+    <div class="prep-section">
+      <div class="prep-section__label">Past Meeting Documents</div>
+      <div id="prepDocList" class="prep-doc-list">
+        <!-- Dynamically populated -->
+      </div>
+      <button id="prepSearchMore" class="prep-search-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+        Search Drive for more
+      </button>
+    </div>
+
+    <button id="prepStart" class="prep-start-btn">
+      ▶ Start with <span id="prepDocCount">0</span> docs
+    </button>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast">Done!</div>
+
+  <script src="auth.js"></script>
+  <script src="meetings.js"></script>
+</body>
+</html>

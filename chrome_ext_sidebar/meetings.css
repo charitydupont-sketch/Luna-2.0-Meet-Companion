@@ -1,0 +1,593 @@
+/**
+ * ThoughtForm – Meeting Picker Styles
+ * Extends the agenda.css design system for the calendar meetings view.
+ */
+
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8f9fa;
+  --bg-surface: #f1f3f4;
+  --text-primary: #202124;
+  --text-secondary: #5f6368;
+  --text-muted: #9aa0a6;
+  --accent-blue: rgb(11, 87, 208);
+  --accent-blue-light: #e8f0fe;
+  --accent-green: #188038;
+  --accent-green-fill: #34a853;
+  --accent-amber: #f9ab00;
+  --accent-red: #d93025;
+  --accent-red-light: #fce8e6;
+  --border-subtle: #e8eaed;
+  --border-hover: #dadce0;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --transition: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding-top: 64px;
+  -webkit-font-smoothing: antialiased;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ─── Custom Scrollbar ─── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.18); }
+
+/* ─── Date Navigator ─── */
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-nav__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+}
+
+.date-nav__btn:hover {
+  background: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.date-nav__btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.date-nav__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.date-nav__today {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background var(--transition);
+}
+
+.date-nav__today:hover {
+  background: var(--accent-blue-light);
+}
+
+/* ─── Meetings Header & Value Proposition ─── */
+.meetings-header {
+  padding: 8px 16px 16px;
+  text-align: center;
+  /* border-bottom: 1px solid var(--border-subtle); */
+  margin-bottom: 16px;
+}
+
+.meetings-header__valprop {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.meetings-header__subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  max-width: 240px;
+  margin: 0 auto;
+}
+/* ─── Meeting Cards ─── */
+.meetings-list {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.meeting-card {
+  position: relative;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition);
+  animation: slideUp 0.3s ease forwards;
+  opacity: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.meeting-card:hover {
+  background: var(--accent-blue-light);
+  border-color: #d2e3fc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(11, 87, 208, 0.08);
+}
+
+.meeting-card--live {
+  border-color: rgba(52, 168, 83, 0.35);
+  background: #e6f4ea;
+  box-shadow: 0 1px 3px rgba(52, 168, 83, 0.08);
+}
+
+.meeting-card--live:hover {
+  border-color: var(--accent-green-fill);
+  background: #d7f1e1;
+  box-shadow: 0 4px 12px rgba(52, 168, 83, 0.15);
+}
+
+.meeting-card__live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: rgba(52, 168, 83, 0.15);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #137333;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.meeting-card__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34a853;
+  animation: liveDotPulse 1.5s ease-in-out infinite;
+}
+
+.meeting-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.meeting-card__time {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.meeting-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.meeting-card__attendees {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.meeting-card__attendees svg {
+  width: 14px;
+  height: 14px;
+  fill: var(--text-muted);
+}
+
+.meeting-card__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.meeting-card__btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.meeting-card__btn--prep {
+  background: var(--accent-blue-light);
+  color: var(--accent-blue);
+}
+
+.meeting-card__btn--prep:hover {
+  background: rgba(11, 87, 208, 0.18);
+}
+
+.meeting-card__btn--join {
+  background: var(--accent-green-fill);
+  color: white;
+}
+
+.meeting-card__btn--join:hover {
+  background: #2c8c46;
+}
+
+
+
+
+
+/* ─── Connect Calendar CTA ─── */
+.connect-cta {
+  margin: 16px;
+  padding: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.connect-cta__icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.connect-cta__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.connect-cta__desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.connect-cta__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.connect-cta__btn:hover {
+  background: #1557b0;
+  transform: translateY(-1px);
+}
+
+/* ─── Context Picker (Prep View) ─── */
+.prep-view {
+  display: none;
+  padding: 0 16px 16px;
+}
+
+.prep-view.visible {
+  display: block;
+}
+
+.prep-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.prep-header__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+}
+
+.prep-header__back:hover {
+  background: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.prep-header__back svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.prep-header__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prep-section {
+  margin-bottom: 16px;
+}
+
+.prep-section__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.prep-doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prep-doc {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: all var(--transition);
+}
+
+.prep-doc:hover {
+  background: var(--bg-card-hover);
+}
+
+.prep-doc__checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 2px solid var(--border-hover);
+  background: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.prep-doc__checkbox:checked {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z'/%3E%3C/svg%3E");
+  background-size: 12px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.prep-doc__icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.prep-doc__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.prep-doc__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prep-doc__meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.prep-search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background: none;
+  border: 1px dashed var(--border-hover);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.prep-search-btn:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.prep-start-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  margin-top: 16px;
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+  box-shadow: 0 2px 8px rgba(11, 87, 208, 0.2);
+}
+
+.prep-start-btn:hover {
+  background: #1557b0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(11, 87, 208, 0.3);
+}
+
+/* ─── Loading State ─── */
+.meetings-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  color: var(--text-secondary);
+  gap: 12px;
+}
+
+.meetings-loading__dots {
+  display: flex;
+  gap: 6px;
+}
+
+.meetings-loading__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+
+.meetings-loading__dot:nth-child(2) { animation-delay: 0.2s; }
+.meetings-loading__dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* ─── Empty State ─── */
+.meetings-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.meetings-empty__icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.meetings-empty__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.meetings-empty__desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ─── Toast ─── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #323232;
+  color: #ffffff;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ─── Animations ─── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(0.8); opacity: 0.3; }
+  40% { transform: scale(1.1); opacity: 1; }
+}
+
+@keyframes liveDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
