@@ -1,7 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { execFile } = require('child_process');
+const { execFile, exec } = require('child_process');
 
 const PORT = 8000;
 const PUBLIC_DIR = __dirname;
@@ -20,6 +20,22 @@ const MIME_TYPES = {
 
 let queueToHub = [];
 let queueToMeet = [];
+let activeMeetProcess = null;
+
+function cleanupStaleMeetProcess(callback) {
+    console.log("[Luna 2.0 Server] Cleaning up stale Chrome bot processes...");
+    if (activeMeetProcess) {
+        try {
+            activeMeetProcess.kill('SIGKILL');
+        } catch (e) {}
+        activeMeetProcess = null;
+    }
+    // Cleanly kill any orphaned Chrome instances using our clean profile path
+    exec('pkill -f LunaMeetProfileClean', () => {
+        // Wait 500ms to let OS release sockets
+        setTimeout(callback, 500);
+    });
+}
 
 const server = http.createServer((req, res) => {
     // Enable CORS for development
@@ -62,19 +78,20 @@ const server = http.createServer((req, res) => {
 
                 console.log(`[Luna 2.0 API] Request received to join actual Google Meet: ${meetUrl}`);
                 
-                // Spawn launcher script safely using execFile
-                const scriptPath = path.join(PUBLIC_DIR, 'run_luna_meet.sh');
-                
-                execFile(scriptPath, [meetUrl], (error, stdout, stderr) => {
-                    if (error) {
-                        console.error(`[Luna 2.0 API Error] Failed to launch Meet script: ${error.message}`);
-                    }
-                    if (stdout) console.log(`[Luna 2.0 Bot] ${stdout}`);
-                    if (stderr) console.error(`[Luna 2.0 Bot Error] ${stderr}`);
-                });
+                cleanupStaleMeetProcess(() => {
+                    const scriptPath = path.join(PUBLIC_DIR, 'run_luna_meet.sh');
+                    
+                    activeMeetProcess = execFile(scriptPath, [meetUrl], (error, stdout, stderr) => {
+                        if (error) {
+                            console.error(`[Luna 2.0 API Error] Failed to launch Meet script: ${error.message}`);
+                        }
+                        if (stdout) console.log(`[Luna 2.0 Bot] ${stdout}`);
+                        if (stderr) console.error(`[Luna 2.0 Bot Error] ${stderr}`);
+                    });
 
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true, message: 'Luna 2.0 launcher script triggered' }));
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, message: 'Luna 2.0 launcher script triggered' }));
+                });
 
             } catch (err) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -121,9 +138,9 @@ const server = http.createServer((req, res) => {
         const wavPath = path.join('/tmp', `speech_${timestamp}.wav`);
 
         // Run macOS say command
-        execFile('/usr/bin/say', ['-o', aiffPath, text], (err) => {
+        execFile('/usr/bin/say', ['-o', aiffPath, text], (err, stdout, stderr) => {
             if (err) {
-                console.error('[TTS API Error] say command failed:', err);
+                console.error('[TTS API Error] say command failed:', err, 'Stderr:', stderr);
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
                 res.end('Failed to generate speech');
                 return;
@@ -172,6 +189,10 @@ const server = http.createServer((req, res) => {
                 const event = JSON.parse(body);
                 console.log("[Server Reflector] Received event to-hub:", JSON.stringify(event));
                 queueToHub.push(event);
+                
+                // Server-side orchestration brain
+                handleServerOrchestration(event);
+
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true }));
             } catch (e) {
@@ -201,16 +222,18 @@ const server = http.createServer((req, res) => {
     }
 
     if (req.method === 'GET' && req.url === '/api/events/poll-hub') {
+        const events = queueToHub;
+        queueToHub = [];
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(queueToHub));
-        queueToHub = []; // Clear queue
+        res.end(JSON.stringify(events));
         return;
     }
 
     if (req.method === 'GET' && req.url === '/api/events/poll-meet') {
+        const events = queueToMeet;
+        queueToMeet = [];
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(queueToMeet));
-        queueToMeet = []; // Clear queue
+        res.end(JSON.stringify(events));
         return;
     }
 
@@ -244,6 +267,59 @@ const server = http.createServer((req, res) => {
         }
     });
 });
+
+function handleServerOrchestration(event) {
+    if (!event) return;
+    
+    if (event.type === 'MEET_CAPTION' || event.type === 'MEET_CHAT') {
+        const text = event.text;
+        const sender = event.sender;
+        const normalized = text.toLowerCase();
+        
+        // Don't respond to ourselves
+        if (sender === 'luna' || sender === 'Luna 2.0') return;
+        
+        const isMention = normalized.includes('luna');
+        const isChat = event.type === 'MEET_CHAT';
+        
+        if (isChat || isMention) {
+            console.log(`[Server Orchestration] Triggered by ${event.type} from ${sender}: "${text}"`);
+            
+            // Set state to thinking
+            queueToMeet.push({ state: 'thinking' });
+            
+            setTimeout(() => {
+                let reply = "";
+                
+                if (normalized.includes('build calculator') || normalized.includes('create calculator')) {
+                    reply = `Certainly, ${sender}! Creating a Calculator prototype in your Sandbox window.`;
+                    queueToHub.push({ type: 'SANDBOX_ACTION', template: 'calculator' });
+                } else if (normalized.includes('build landing') || normalized.includes('create website')) {
+                    reply = `Sure thing, ${sender}! I have generated a landing page layout in your Sandbox.`;
+                    queueToHub.push({ type: 'SANDBOX_ACTION', template: 'landing' });
+                } else {
+                    reply = `Hi ${sender}! I received your message: "${text}"`;
+                }
+                
+                console.log(`[Server Orchestration] Generated reply: "${reply}"`);
+                
+                // Dispatch response actions to Google Meet
+                queueToMeet.push({ state: 'speaking' });
+                queueToMeet.push({ text: reply });
+                
+                // Mirror the interaction in the Hub chat history log
+                const label = event.type === 'MEET_CHAT' ? `[Meet Chat: ${sender}]` : `[Meet Mention: ${sender}]`;
+                queueToHub.push({ type: 'MEET_CHAT_MIRROR', sender: 'user', text: `${label} ${text}` });
+                queueToHub.push({ type: 'MEET_CHAT_MIRROR', sender: 'luna', text: reply });
+                
+                // Also set state back to idle after a duration
+                setTimeout(() => {
+                    queueToMeet.push({ state: 'idle' });
+                }, 4000);
+            }, 1200);
+        }
+    }
+}
 
 server.listen(PORT, '127.0.0.1', () => {
     console.log(`[Luna 2.0 Server] Running at http://127.0.0.1:${PORT}`);

@@ -1,4 +1,6 @@
+console.log("[Luna 2.0 Hub Debug] app.js script evaluated outside DOMContentLoaded");
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("[Luna 2.0 Hub Debug] DOMContentLoaded listener fired");
     // 1. Initialize Canvas Orb
     const orb = new AgentOrb('orb-canvas');
 
@@ -17,34 +19,20 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(res => res.json())
             .then(events => {
                 events.forEach(event => {
-                    console.log("[Luna 2.0 Hub] Polled event received:", event);
+                    console.log("[Luna 2.0 Hub] Polled event received: " + JSON.stringify(event));
                     if (event && event.type === 'MEET_CHAT') {
+                        // MEET_CHAT logic is now handled directly on the Node backend server
+                    } else if (event && event.type === 'MEET_CAPTION') {
                         const sender = event.sender;
                         const text = event.text;
-                        
-                        // Log the incoming message in the local dashboard chat
-                        addMessageToLog('user', `[Meet: ${sender}] ${text}`);
-                        
-                        // Let the user know Luna 2.0 is thinking
-                        setAgentState('thinking');
-                        
-                        setTimeout(() => {
-                            const normalized = text.toLowerCase();
-                            let reply = "";
-                            
-                            if (normalized.includes('build calculator') || normalized.includes('create calculator')) {
-                                reply = `Certainly, ${sender}! Creating a Calculator prototype in your Sandbox window.`;
-                                openSandbox(templates.calculator);
-                            } else if (normalized.includes('build landing') || normalized.includes('create website')) {
-                                reply = `Sure thing, ${sender}! I have generated a landing page layout in your Sandbox.`;
-                                openSandbox(templates.landing);
-                            } else {
-                                reply = `Hello ${sender}, I am Luna 2.0, your AI assistant. I received your message: "${text}"`;
-                            }
-                            
-                            addMessageToLog('luna', reply);
-                            speakText(reply);
-                        }, 1200);
+                        console.log("[Luna 2.0 Hub] Processing MEET_CAPTION from " + sender + ": " + text);
+
+                        // Add to the live transcript panel
+                        addTranscriptSegment(sender, text);
+                    } else if (event && event.type === 'MEET_CHAT_MIRROR') {
+                        addMessageToLog(event.sender, event.text);
+                    } else if (event && event.type === 'SANDBOX_ACTION') {
+                        openSandbox(templates[event.template]);
                     }
                 });
             })
@@ -67,8 +55,10 @@ document.addEventListener('DOMContentLoaded', () => {
         meetStream: null,
         meetMicActive: true,
         meetVideoActive: true,
-        meetings: []
+        meetings: [],
+        muted: false
     };
+    window.lunaState = state;
 
     // Pre-populate mock Desktop files
     const mockDesktopFiles = [
@@ -187,6 +177,15 @@ document.addEventListener('DOMContentLoaded', () => {
         btnCloseChat: document.getElementById('btn-close-chat'),
         chatLogPanel: document.getElementById('chat-log-panel'),
         chatMessages: document.getElementById('chat-messages'),
+        tabDrawerChat: document.getElementById('tab-drawer-chat'),
+        tabDrawerTranscript: document.getElementById('tab-drawer-transcript'),
+        paneDrawerChat: document.getElementById('pane-drawer-chat'),
+        paneDrawerTranscript: document.getElementById('pane-drawer-transcript'),
+        transcriptMessages: document.getElementById('transcript-messages'),
+        transcriptStatus: document.getElementById('transcript-status'),
+        btnToggleMute: document.getElementById('btn-toggle-mute'),
+        muteIcon: document.getElementById('mute-icon'),
+        muteBtnText: document.getElementById('mute-btn-text'),
         
         // State headers
         agentStateDot: document.getElementById('agent-state-dot'),
@@ -331,6 +330,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function speakText(text) {
         window.speechSynthesis.cancel();
         
+        if (state.muted) {
+            console.log("[Luna 2.0 Hub] Mute active. Speech blocked for text:", text);
+            setAgentState('idle');
+            return;
+        }
+        
         // Broadcast speech text to Google Meet tab
         broadcastState({ text: text });
 
@@ -445,6 +450,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function addTranscriptSegment(speaker, text) {
+        if (elements.transcriptStatus) {
+            elements.transcriptStatus.textContent = "Receiving live captions...";
+        }
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'transcript-segment';
+        msgDiv.style.background = 'rgba(255, 255, 255, 0.03)';
+        msgDiv.style.borderLeft = '3px solid var(--accent)';
+        msgDiv.style.padding = '10px 12px';
+        msgDiv.style.borderRadius = '0 8px 8px 0';
+        msgDiv.style.display = 'flex';
+        msgDiv.style.flexDirection = 'column';
+        msgDiv.style.gap = '4px';
+
+        const headerDiv = document.createElement('div');
+        headerDiv.style.display = 'flex';
+        headerDiv.style.justifyContent = 'space-between';
+        headerDiv.style.alignItems = 'center';
+        headerDiv.style.width = '100%';
+
+        const speakerSpan = document.createElement('span');
+        speakerSpan.style.fontWeight = '600';
+        speakerSpan.style.fontSize = '0.75rem';
+        speakerSpan.style.color = '#fff';
+        speakerSpan.textContent = speaker;
+
+        const timeSpan = document.createElement('span');
+        timeSpan.style.fontSize = '0.65rem';
+        timeSpan.style.color = 'rgba(255, 255, 255, 0.4)';
+        const now = new Date();
+        timeSpan.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        headerDiv.appendChild(speakerSpan);
+        headerDiv.appendChild(timeSpan);
+
+        const textDiv = document.createElement('div');
+        textDiv.style.fontSize = '0.75rem';
+        textDiv.style.lineHeight = '1.4';
+        textDiv.style.color = 'rgba(255, 255, 255, 0.85)';
+        textDiv.textContent = text;
+
+        msgDiv.appendChild(headerDiv);
+        msgDiv.appendChild(textDiv);
+
+        elements.transcriptMessages.appendChild(msgDiv);
+        elements.transcriptMessages.scrollTop = elements.transcriptMessages.scrollHeight;
+    }
+
     function handleUserMessage(query) {
         // Interrupt any active agent voice playback instantly
         broadcastState({ cancel: true });
@@ -452,48 +506,18 @@ document.addEventListener('DOMContentLoaded', () => {
         addMessageToLog('user', query);
         setAgentState('thinking');
         
-        setTimeout(() => {
-            const normalized = query.toLowerCase();
-            let reply = "";
-
-            // Meet command
-            if (normalized.includes('meet') || normalized.includes('call') || normalized.includes('join')) {
-                reply = "Sure, joining your Google Meet call now. Moving my visual agent companion into the Meet screen.";
-                startGoogleMeet();
-            }
-            // Prototyping builder template command
-            else if (normalized.includes('build calculator') || normalized.includes('create calculator')) {
-                reply = "Creating a live interactive Calculator prototype in the Sandbox workspace. Click Run to test it!";
-                openSandbox(templates.calculator);
-            }
-            else if (normalized.includes('build landing') || normalized.includes('create website')) {
-                reply = "Creating a beautiful Luna 2.0 Launchpad website prototype. I've populated the Sandbox workspace.";
-                openSandbox(templates.landing);
-            }
-            // General Docs/Mail triggers
-            else if (normalized.includes('google doc') || normalized.includes('draft doc') || normalized.includes('document')) {
-                reply = "Opening Google Docs. Drafted conversation summary.";
-                openGoogleDocs();
-            }
-            else if (normalized.includes('email') || normalized.includes('gmail') || normalized.includes('send mail')) {
-                reply = "Opening Gmail composer. Set up draft templates.";
-                openGmailDraft();
-            }
-            else if (normalized.includes('calendar') || normalized.includes('schedule') || normalized.includes('appointment')) {
-                reply = "Opening Google Calendar scheduler.";
-                openCalendarPlanner();
-            }
-            else if (normalized.includes('pull files') || normalized.includes('sync') || normalized.includes('get files')) {
-                reply = "Scanning desktop and active storage. Check files in the tabs.";
-                triggerPullDesktop();
-            }
-            else {
-                reply = `Hi, I am Luna 2.0. I've logged: "${query}". We can build a prototype, open Google Docs, or schedule a Calendar sync together.`;
-            }
-
-            addMessageToLog('luna', reply);
-            speakText(reply);
-        }, 1100);
+        // Post user message directly to the server orchestration brain
+        fetch('/api/events/to-hub', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'MEET_CHAT',
+                sender: 'user',
+                text: query
+            })
+        }).catch(err => {
+            console.error("[Luna Hub] Failed to send user message to server:", err);
+        });
     }
 
     // 6. Desktop & Google Drive Browsing
@@ -1045,6 +1069,62 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.chatLogPanel.classList.remove('open');
             elements.btnToggleChat.classList.remove('secondary');
         }
+    }
+
+    function switchDrawerTab(target) {
+        if (target === 'chat') {
+            elements.tabDrawerChat.classList.add('active');
+            elements.tabDrawerTranscript.classList.remove('active');
+            elements.paneDrawerChat.style.display = 'flex';
+            elements.paneDrawerTranscript.style.display = 'none';
+        } else {
+            elements.tabDrawerChat.classList.remove('active');
+            elements.tabDrawerTranscript.classList.add('active');
+            elements.paneDrawerChat.style.display = 'none';
+            elements.paneDrawerTranscript.style.display = 'flex';
+        }
+    }
+
+    if (elements.tabDrawerChat && elements.tabDrawerTranscript) {
+        elements.tabDrawerChat.addEventListener('click', () => switchDrawerTab('chat'));
+        elements.tabDrawerTranscript.addEventListener('click', () => switchDrawerTab('transcript'));
+    }
+
+    function toggleMute() {
+        state.muted = !state.muted;
+        if (state.muted) {
+            elements.btnToggleMute.classList.add('muted-active');
+            elements.btnToggleMute.style.background = 'rgba(234, 67, 53, 0.2)';
+            elements.btnToggleMute.style.color = '#ea4335';
+            elements.btnToggleMute.style.borderColor = '#ea4335';
+            elements.muteBtnText.textContent = "Unmute Luna";
+            
+            const w1 = document.getElementById('mute-wave-1');
+            const w2 = document.getElementById('mute-wave-2');
+            if (w1) w1.style.display = 'none';
+            if (w2) w2.style.display = 'none';
+            
+            // Cancel current playback
+            broadcastState({ cancel: true });
+            showToast("Luna has been muted.");
+        } else {
+            elements.btnToggleMute.classList.remove('muted-active');
+            elements.btnToggleMute.style.background = '';
+            elements.btnToggleMute.style.color = '';
+            elements.btnToggleMute.style.borderColor = '';
+            elements.muteBtnText.textContent = "Mute Luna";
+            
+            const w1 = document.getElementById('mute-wave-1');
+            const w2 = document.getElementById('mute-wave-2');
+            if (w1) w1.style.display = '';
+            if (w2) w2.style.display = '';
+            
+            showToast("Luna has been unmuted.");
+        }
+    }
+
+    if (elements.btnToggleMute) {
+        elements.btnToggleMute.addEventListener('click', toggleMute);
     }
 
     elements.btnToggleChat.addEventListener('click', () => toggleChatPanel());

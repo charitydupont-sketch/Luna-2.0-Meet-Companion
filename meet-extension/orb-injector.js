@@ -299,7 +299,6 @@
                     captionsBox.style.display = 'block';
                     
                     playLunaVoice(update.text);
-                    sendMeetChatMessage(update.text);
                     
                     const displayDuration = Math.max(3000, update.text.length * 80);
                     setTimeout(() => { captionsBox.style.display = 'none'; }, displayDuration);
@@ -341,130 +340,7 @@
         setInterval(automateLobby, 1000);
     });
 
-    // 2. Capture Meet Chat Messages and forward to Luna Hub
-    const sentMessagesCache = new Set();
-    let observedContainer = null;
-    function setupChatObserver() {
-        const container = document.querySelector('div[aria-live="polite"]');
-        if (!container) return;
-
-        if (observedContainer === container) return;
-        observedContainer = container;
-
-        lunaLog("Chat container found. Injecting chat listener MutationObserver.");
-
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutation => {
-                if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-                    mutation.addedNodes.forEach(node => {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            const messageBlocks = node.classList.contains('GDhqjd') ? [node] : node.querySelectorAll('div.GDhqjd');
-                            
-                            messageBlocks.forEach(block => {
-                                const senderName = block.querySelector('div.YT6nS')?.textContent?.trim() || '';
-                                if (senderName === 'Luna 2.0') return; // Ignore own messages
-
-                                const textNodes = block.querySelectorAll('div.QTZ77');
-                                textNodes.forEach(textNode => {
-                                    if (textNode.getAttribute('data-luna-processed') === 'true') return;
-                                    textNode.setAttribute('data-luna-processed', 'true');
-
-                                    const text = textNode.textContent?.trim();
-                                    if (text) {
-                                        lunaLog(`Captured chat from ${senderName}: ${text}`);
-                                        sendLunaEvent('MEET_CHAT', {
-                                            sender: senderName,
-                                            text: text
-                                        });
-                                    }
-                                });
-                            });
-                        }
-                    });
-                }
-            });
-        });
-
-        observer.observe(container, { childList: true, subtree: true });
-    }
-
-    // 3. Capture Meet Live Captions and forward to Luna Hub
-    let captionsObserver = null;
-    let speakerBuffers = {}; // Map of senderName -> { text: string, timer: timeout }
-
-    function setupCaptionsObserver() {
-        const container = document.querySelector('[role="region"][aria-label*="caption" i]') || 
-                          document.querySelector('[role="region"][aria-label*="subtitle" i]') || 
-                          document.querySelector('[jsname="dsyhDe"]');
-        if (!container) return;
-
-        if (captionsObserver) return; // Already observing
-
-        lunaLog("Live Captions container found. Injecting captions listener MutationObserver.");
-
-        captionsObserver = new MutationObserver((mutations) => {
-            const blocks = container.querySelectorAll('[jsname="c12oMc"]') || 
-                           container.querySelectorAll('.Kc212b') ||
-                           Array.from(container.children);
-                           
-            blocks.forEach(block => {
-                const speakerName = block.querySelector('.NWpY1d')?.textContent?.trim() || 
-                                    block.querySelector('[jsname="wP3x1"]')?.textContent?.trim() || 
-                                    '';
-                                    
-                if (!speakerName || speakerName === 'Luna 2.0') return;
-
-                const textEls = block.querySelectorAll('.ygicle.VbkSUe') || 
-                                block.querySelectorAll('.iTTPOb');
-                let fullText = "";
-                textEls.forEach(el => {
-                    fullText += el.textContent + " ";
-                });
-                fullText = fullText.trim();
-
-                if (!fullText) return;
-
-                if (!speakerBuffers[speakerName]) {
-                    speakerBuffers[speakerName] = { text: "", timer: null };
-                }
-
-                const buffer = speakerBuffers[speakerName];
-                
-                if (fullText !== buffer.text) {
-                    buffer.text = fullText;
-                    
-                    if (buffer.timer) clearTimeout(buffer.timer);
-                    
-                    buffer.timer = setTimeout(() => {
-                        const finishedText = buffer.text;
-                        lunaLog(`${speakerName} finished speaking: ${finishedText}`);
-                        
-                        sendLunaEvent('MEET_CHAT', {
-                            sender: speakerName,
-                            text: finishedText
-                        });
-                        
-                        buffer.text = "";
-                    }, 1800); // 1.8 seconds silence threshold
-                }
-            });
-        });
-
-        captionsObserver.observe(container, { childList: true, subtree: true, characterData: true });
-    }
-
-    function autoEnableCaptions() {
-        const ccBtn = document.querySelector('button[aria-label*="captions" i]') || 
-                      document.querySelector('button[data-tooltip*="captions" i]');
-        if (ccBtn) {
-            const label = ccBtn.getAttribute('aria-label')?.toLowerCase() || '';
-            const tooltip = ccBtn.getAttribute('data-tooltip')?.toLowerCase() || '';
-            if (label.includes('turn on') || tooltip.includes('turn on')) {
-                lunaLog("Automatically enabling captions for Luna (detected OFF state)...");
-                ccBtn.click();
-            }
-        }
-    }
+    // DOM observers removed - handled exclusively by content.js
 
     // 5. Send chat response to Google Meet side panel chat
     function sendMeetChatMessage(text) {
@@ -524,61 +400,8 @@
         }
     }
 
-    // 6. Capture open chat list messages (when side panel is open)
-    let chatListObserver = null;
-    let observedChatList = null;
-
-    function setupChatListObserver() {
-        const container = document.querySelector('[jsname="xySENc"]') || document.querySelector('.z3851e');
-        if (!container) return;
-
-        if (observedChatList === container) return;
-        observedChatList = container;
-
-        lunaLog("Chat list container found. Injecting chat list MutationObserver.");
-
-        chatListObserver = new MutationObserver((mutations) => {
-            mutations.forEach(mutation => {
-                if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-                    mutation.addedNodes.forEach(node => {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            const textNodes = node.classList.contains('Ss4fHf') ? 
-                                              [node.querySelector('[jsname="dTKtvb"]')] : 
-                                              node.querySelectorAll('[jsname="dTKtvb"]');
-                            
-                            textNodes.forEach(textNode => {
-                                if (!textNode) return;
-                                if (textNode.getAttribute('data-luna-processed') === 'true') return;
-                                textNode.setAttribute('data-luna-processed', 'true');
-
-                                const text = textNode.textContent?.trim();
-                                if (text) {
-                                    if (sentMessagesCache.has(text)) {
-                                        lunaLog("Ignoring own sent message: " + text);
-                                        return;
-                                    }
-                                    
-                                    lunaLog(`Captured chat list message: ${text}`);
-                                    sendLunaEvent('MEET_CHAT', {
-                                        sender: "Participant",
-                                        text: text
-                                    });
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-        });
-
-        chatListObserver.observe(container, { childList: true, subtree: true });
-    }
-
     // Check periodically for chat and captions history containers presence
     window.addEventListener('load', () => {
-        setInterval(setupChatObserver, 1000);
-        setInterval(setupChatListObserver, 1000);
-        setInterval(setupCaptionsObserver, 1000);
-        setInterval(autoEnableCaptions, 2000);
+        // Observers moved to content.js
     });
 })();

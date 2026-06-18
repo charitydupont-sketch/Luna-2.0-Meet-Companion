@@ -3,6 +3,66 @@
 if (window.self === window.top && window.location.search.includes('luna=true')) {
     console.log("[Luna 2.0 Content Script] Bot mode active. Starting native script injection...");
     const processedMessageIds = new Set();
+    const processedTexts = new Map(); // Map of key (senderName:text) -> timestamp
+    let cachedSelfName = null;
+    let recentlySpokenTexts = [];
+
+    function findSelfName() {
+        if (cachedSelfName) return cachedSelfName;
+
+        const participantItems = document.querySelectorAll('.VfPpkd-StrnGf-rymPhb-ibnC6b, [data-participant-id], .cS7aqe.NkoVdd');
+        for (const item of participantItems) {
+            const nameEl = item.querySelector('.zWGUib, .adnwBd, .NWpY1d');
+            if (nameEl) {
+                const rawText = nameEl.innerText || nameEl.textContent || '';
+                const firstLine = rawText.split('\n')[0].trim();
+                if (rawText.includes('(You)') || item.textContent?.includes('(You)')) {
+                    const name = firstLine.replace(/\s*\(You\)\s*$/, '').trim();
+                    if (name && name.length > 1) {
+                        cachedSelfName = name;
+                        return name;
+                    }
+                }
+            }
+        }
+        
+        const videoTiles = document.querySelectorAll('[data-requested-participant-id], [data-participant-id]');
+        for (const tile of videoTiles) {
+            const nameEl = tile.querySelector('.XEazBc .adnwBd, .zWGUib, .NWpY1d');
+            if (nameEl) {
+                const rawText = nameEl.innerText || nameEl.textContent || '';
+                const firstLine = rawText.split('\n')[0].trim();
+                if (firstLine.includes('(You)')) {
+                    const name = firstLine.replace(/\s*\(You\)\s*$/, '').trim();
+                    if (name && name.length > 1) {
+                        cachedSelfName = name;
+                        return name;
+                    }
+                }
+            }
+        }
+        
+        const selectors = [
+            '[data-self-name]',
+            '[data-self-attendance-from-server-name]', 
+            '[data-self-full-name]'
+        ];
+        
+        for (const selector of selectors) {
+            const el = document.querySelector(selector);
+            if (el) {
+                const name = el.getAttribute('data-self-name') ||
+                             el.getAttribute('data-self-attendance-from-server-name') ||
+                             el.getAttribute('data-self-full-name');
+                if (name && name.length > 1 && name !== 'You') {
+                    cachedSelfName = name;
+                    return name;
+                }
+            }
+        }
+        
+        return null;
+    }
 
 // // 1. Inject the WebRTC interception script into the webpage context
 function injectInterceptionScript() {
@@ -64,16 +124,24 @@ function automateLobby() {
         }
     }, 1000);
 }
-window.addEventListener('load', automateLobby);
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    automateLobby();
+} else {
+    window.addEventListener('load', automateLobby);
+}
 
 // 3. Native Chrome Extension Background Service Worker Bridge (Mixed-Content bypass)
 window.addEventListener('message', (e) => {
-    // Receive message from the page context script and forward to background script
+    // Receive message from the page context script and forward directly to the Reflector server
     if (e.data && e.data.type === 'MEET_TO_LUNA') {
         const payload = e.data.payload;
         
         if (payload && payload.type === 'BROWSER_LOG') {
-            chrome.runtime.sendMessage({ type: 'BROWSER_LOG', message: payload.message });
+            fetch('http://127.0.0.1:8000/api/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: payload.message })
+            }).catch(() => {});
             return;
         }
 
@@ -95,20 +163,18 @@ window.addEventListener('message', (e) => {
             return;
         }
 
-        // Forward general synchronization events (e.g. MEET_CHAT) to BroadcastChannel via background
-        chrome.runtime.sendMessage({ type: 'FORWARD_TO_HUB', payload: payload });
-    }
-});
-
-// Receive events from the background script (from companion hub) and forward to the page context script
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'BACKGROUND_TO_CONTENT') {
-        window.postMessage({ type: 'LUNA_SYNC', payload: message.payload }, '*');
+        // Forward general synchronization events (e.g. MEET_CHAT) to server reflector
+        fetch('http://127.0.0.1:8000/api/events/to-hub', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).catch(() => {});
     }
 });
 
 // 4. Capture Meet Chat Messages and forward to Luna Hub
 let observedContainer = null;
+let chatObserver = null;
 function setupChatObserver() {
     // Select the polite aria-live container where new chat messages are appended in Google Meet
     const container = document.querySelector('div[jsname="xySENc"]') || 
@@ -119,7 +185,7 @@ function setupChatObserver() {
     if (observedContainer === container) return;
     
     // Scan existing history to populate processed list before observing
-    container.querySelectorAll('div.QTZ77').forEach(textNode => {
+    container.querySelectorAll('div[jsname="dTKtvb"], div.QTZ77').forEach(textNode => {
         textNode.setAttribute('data-luna-processed', 'true');
         const messageEl = textNode.closest('.RLrADb') || textNode.closest('[data-message-id]');
         const messageId = messageEl ? messageEl.getAttribute('data-message-id') : null;
@@ -128,23 +194,38 @@ function setupChatObserver() {
         }
     });
 
+    if (chatObserver) {
+        try {
+            chatObserver.disconnect();
+        } catch (e) {}
+    }
+
     observedContainer = container;
 
     contentLog("[Luna 2.0 Extension] Chat container found. Injecting chat listener MutationObserver.");
 
-    const observer = new MutationObserver((mutations) => {
+    chatObserver = new MutationObserver((mutations) => {
         mutations.forEach(mutation => {
             if (mutation.addedNodes && mutation.addedNodes.length > 0) {
                 mutation.addedNodes.forEach(node => {
                     if (node.nodeType === Node.ELEMENT_NODE) {
-                        const messageBlocks = node.classList.contains('GDhqjd') ? [node] : node.querySelectorAll('div.GDhqjd');
-                        
-                        messageBlocks.forEach(block => {
-                            const senderName = block.querySelector('div.YT6nS')?.textContent?.trim() || '';
-                            if (senderName === 'Luna 2.0') return; // Ignore own messages
+                        const block = node.closest('.Ss4fHf') || node.closest('.GDhqjd');
+                        if (block) {
+                            const senderName = block.querySelector('.poVWob, div.YT6nS')?.textContent?.trim() || 'Participant';
+                            const selfName = findSelfName();
+                            const isSelf = senderName === 'Luna 2.0' || 
+                                           senderName.toLowerCase() === 'you' ||
+                                           (selfName && senderName === selfName) || 
+                                           senderName.toLowerCase().includes('luna');
+                            if (isSelf) return; // Ignore own messages
 
-                            const textNodes = block.querySelectorAll('div.QTZ77');
-                            textNodes.forEach(textNode => {
+                            const nodesToProcess = [];
+                            if (node.tagName === 'DIV' && (node.getAttribute('jsname') === 'dTKtvb' || node.classList.contains('QTZ77'))) {
+                                nodesToProcess.push(node);
+                            }
+                            node.querySelectorAll('div[jsname="dTKtvb"], div.QTZ77').forEach(el => nodesToProcess.push(el));
+
+                            nodesToProcess.forEach(textNode => {
                                 if (textNode.getAttribute('data-luna-processed') === 'true') return;
                                 textNode.setAttribute('data-luna-processed', 'true');
 
@@ -157,6 +238,23 @@ function setupChatObserver() {
 
                                 const text = textNode.textContent?.trim();
                                 if (text) {
+                                    const now = Date.now();
+                                    const cacheKey = `${senderName}:${text}`;
+                                    if (processedTexts.has(cacheKey)) {
+                                        const lastTime = processedTexts.get(cacheKey);
+                                        if (now - lastTime < 10000) {
+                                            return; // Skip duplicate message within 10 seconds
+                                        }
+                                    }
+                                    processedTexts.set(cacheKey, now);
+
+                                    // Periodic cleanup to prevent leaks
+                                    if (processedTexts.size > 100) {
+                                        for (let [k, v] of processedTexts.entries()) {
+                                            if (now - v > 10000) processedTexts.delete(k);
+                                        }
+                                    }
+
                                     contentLog(`[Luna 2.0 Extension] Captured chat from ${senderName}: ${text} (ID: ${messageId})`);
                                     window.postMessage({
                                         type: 'MEET_TO_LUNA',
@@ -168,14 +266,14 @@ function setupChatObserver() {
                                     }, '*');
                                 }
                             });
-                        });
+                        }
                     }
                 });
             }
         });
     });
 
-    observer.observe(container, { childList: true, subtree: true });
+    chatObserver.observe(container, { childList: true, subtree: true });
 }
 
 // 5. Capture Meet Live Captions and forward to Luna Hub
@@ -200,11 +298,23 @@ function setupCaptionsObserver() {
                        
         blocks.forEach(block => {
             // Extract speaker name
-            const speakerName = block.querySelector('.NWpY1d')?.textContent?.trim() || 
-                                block.querySelector('[jsname="wP3x1"]')?.textContent?.trim() || 
-                                '';
+            let speakerName = block.querySelector('.NWpY1d')?.textContent?.trim() || 
+                              block.querySelector('[jsname="wP3x1"]')?.textContent?.trim() || 
+                              '';
                                 
-            if (!speakerName || speakerName === 'Luna 2.0') return; // Ignore empty or own captions
+            if (!speakerName) return;
+
+            const selfName = findSelfName();
+
+            // Resolve 'You' to the actual name if possible
+            if (speakerName === 'You' && selfName) {
+                speakerName = selfName;
+            }
+
+            // Ignore own captions (either literal name, placeholder 'You', or resolved self name)
+            if (speakerName === 'Luna 2.0' || speakerName === 'You' || (selfName && speakerName === selfName)) {
+                return;
+            }
 
             // Extract text parts
             const textEls = block.querySelectorAll('.ygicle.VbkSUe') || 
@@ -216,6 +326,23 @@ function setupCaptionsObserver() {
             fullText = fullText.trim();
 
             if (!fullText) return;
+
+            // Echo cancellation: ignore if the caption matches recently spoken texts by the bot
+            const cleanCaption = fullText.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+            const now = Date.now();
+            
+            // Filter out expired spoken texts (> 30 seconds old)
+            recentlySpokenTexts = recentlySpokenTexts.filter(item => now - item.timestamp < 30000);
+            
+            const isEcho = recentlySpokenTexts.some(spoken => {
+                // Return true if caption is a close match to spoken text
+                return spoken.text.includes(cleanCaption) || cleanCaption.includes(spoken.text);
+            });
+
+            if (isEcho) {
+                contentLog("[Luna 2.0 Extension] Acoustic echo ignored: " + fullText);
+                return;
+            }
 
             // Update the speaker's text buffer
             if (!speakerBuffers[speakerName]) {
@@ -239,7 +366,7 @@ function setupCaptionsObserver() {
                     window.postMessage({
                         type: 'MEET_TO_LUNA',
                         payload: {
-                            type: 'MEET_CHAT',
+                            type: 'MEET_CAPTION',
                             sender: speakerName,
                             text: finishedText
                         }
@@ -268,12 +395,93 @@ function autoEnableCaptions() {
     }
 }
 
+function ensureChatPanelOpen() {
+    const textarea = document.querySelector('textarea[aria-label*="send a message" i]');
+    if (!textarea) {
+        const chatBtn = document.querySelector('button[aria-label*="chat with everyone" i]') || 
+                        document.querySelector('button[data-tooltip*="chat with everyone" i]') ||
+                        document.querySelector('[jsname="A52Zdd"]');
+        if (chatBtn) {
+            contentLog("[Luna 2.0 Extension] Automatically opening chat panel to observe messages...");
+            chatBtn.click();
+        }
+    }
+}
+
+function sendMeetChatMessage(text) {
+    const textarea = document.querySelector('textarea[aria-label*="send a message" i]');
+    if (textarea) {
+        textarea.value = text;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // Find send button
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const sendBtn = buttons.find(btn => {
+            const label = btn.getAttribute('aria-label') || '';
+            return label.toLowerCase().includes('send');
+        });
+        
+        if (sendBtn) {
+            sendBtn.removeAttribute('disabled');
+            sendBtn.click();
+            contentLog("[Luna 2.0 Extension] Automatically sent chat response: " + text);
+        } else {
+            contentLog("[Luna 2.0 Extension] Send button not found!");
+        }
+    } else {
+        contentLog("[Luna 2.0 Extension] Textarea not found! Chat panel might be closed!");
+    }
+}
+function ensureUnmuted() {
+    const micBtn = document.querySelector('button[aria-label*="turn on microphone" i]') || 
+                   document.querySelector('button[data-tooltip*="turn on microphone" i]');
+    if (micBtn) {
+        contentLog("[Luna 2.0 Extension] Luna was muted. Automatically unmuting microphone...");
+        micBtn.click();
+    }
+}
+
 // Check periodically for chat and captions history containers presence
-window.addEventListener('load', () => {
-    setInterval(setupChatObserver, 1000);
-    setInterval(setupCaptionsObserver, 1000);
-    setInterval(autoEnableCaptions, 2000);
-});
+    function initBot() {
+        setInterval(setupChatObserver, 1000);
+        setInterval(setupCaptionsObserver, 1000);
+        setInterval(autoEnableCaptions, 2000);
+        setInterval(ensureChatPanelOpen, 2000);
+        setInterval(ensureUnmuted, 2000);
+
+        // Poll server directly from content script for events (prevents service worker timeout sleep issues)
+        setInterval(() => {
+            fetch('http://127.0.0.1:8000/api/events/poll-meet')
+                .then(res => res.json())
+                .then(events => {
+                    events.forEach(event => {
+                        contentLog("[Luna 2.0 Extension] Polled event received from server: " + JSON.stringify(event));
+                        
+                        if (event && event.text) {
+                            // Automatically type and send the text response in Google Meet chat!
+                            sendMeetChatMessage(event.text);
+                            
+                            const cleanSpoken = event.text.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+                            if (cleanSpoken) {
+                                recentlySpokenTexts.push({
+                                    text: cleanSpoken,
+                                    timestamp: Date.now()
+                                });
+                            }
+                        }
+
+                        window.postMessage({ type: 'LUNA_SYNC', payload: event }, '*');
+                    });
+                })
+                .catch(err => {});
+        }, 200);
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        initBot();
+    } else {
+        window.addEventListener('load', initBot);
+    }
 
 } else {
     // Host mode logic (runs on the meeting host's browser context)
@@ -289,5 +497,10 @@ window.addEventListener('load', () => {
             }
         }, 1000);
     }
-    window.addEventListener('load', runHostAutoAdmit);
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        runHostAutoAdmit();
+    } else {
+        window.addEventListener('load', runHostAutoAdmit);
+    }
 }

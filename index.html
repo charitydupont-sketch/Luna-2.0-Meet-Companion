@@ -145,6 +145,10 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         <span>Chat Log</span>
                     </button>
+                    <button id="btn-toggle-mute" class="btn secondary" title="Mute Luna's voice output">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="mute-icon"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path id="mute-wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path id="mute-wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                        <span id="mute-btn-text">Mute Luna</span>
+                    </button>
                 </div>
             </header>
 
@@ -179,14 +183,32 @@
 
         <!-- Right Slide-Out Conversation Log -->
         <section id="chat-log-panel" class="chat-log-panel closed">
-            <div class="panel-header">
-                <h2>Luna 2.0 Chat History</h2>
-                <button id="btn-close-chat" class="icon-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
+            <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <h2 id="drawer-panel-title">Luna 2.0 Hub</h2>
+                    <button id="btn-close-chat" class="icon-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="tab-control-bar" style="margin: 0; padding: 2px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <button id="tab-drawer-chat" class="tab-btn active" style="flex: 1; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px;">Luna Chat</button>
+                    <button id="tab-drawer-transcript" class="tab-btn" style="flex: 1; padding: 6px 12px; font-size: 0.75rem; border-radius: 6px;">Live Transcript</button>
+                </div>
             </div>
-            <div class="chat-messages-container" id="chat-messages">
-                <!-- Chat messages go here -->
+            
+            <!-- Tab Pane 1: Luna Chat Messages -->
+            <div id="pane-drawer-chat" class="drawer-tab-pane active" style="display: flex; flex-direction: column; flex: 1; overflow: hidden; height: calc(100% - 100px);">
+                <div class="chat-messages-container" id="chat-messages" style="height: 100%; overflow-y: auto;">
+                    <!-- Chat messages go here -->
+                </div>
+            </div>
+
+            <!-- Tab Pane 2: Live Transcript Segments -->
+            <div id="pane-drawer-transcript" class="drawer-tab-pane" style="display: none; flex-direction: column; flex: 1; overflow: hidden; height: calc(100% - 100px); padding: 15px;">
+                <div id="transcript-status" style="font-size: 0.75rem; color: var(--accent); font-style: italic; margin-bottom: 10px;">Waiting for captions...</div>
+                <div class="chat-messages-container" id="transcript-messages" style="height: calc(100% - 30px); overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
+                    <!-- Live transcript segments go here -->
+                </div>
             </div>
         </section>
     </div>

@@ -1,22 +1,9 @@
 // Luna 2.0 Chrome Extension Background Service Worker
 console.log("Luna 2.0 background service worker active.");
 
-// Poll server for incoming events from the companion Hub dashboard (replaces BroadcastChannel)
-setInterval(() => {
-    fetch('http://127.0.0.1:8000/api/events/poll-meet')
-        .then(res => res.json())
-        .then(events => {
-            events.forEach(event => {
-                console.log("[Background Worker] Polled event received:", event);
-                chrome.tabs.query({ url: "https://meet.google.com/*" }, (tabs) => {
-                    tabs.forEach(tab => {
-                        chrome.tabs.sendMessage(tab.id, { type: 'BACKGROUND_TO_CONTENT', payload: event });
-                    });
-                });
-            });
-        })
-        .catch(err => {});
-}, 800);
+// Polling from background service worker is disabled in MV3 to avoid worker sleeping.
+// Instead, content.js polls the server directly.
+
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'FETCH_TTS') {

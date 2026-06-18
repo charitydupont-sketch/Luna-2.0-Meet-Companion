@@ -26,15 +26,29 @@ echo "Target Meet URL: $MEET_URL"
 CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 # Place profile inside the home folder to inherit permissions and avoid lock conflicts
-PROFILE_DIR="/Users/charitydupont/LunaMeetProfile"
+PROFILE_DIR="/Users/charitydupont/LunaMeetProfileClean"
 
-# Clear previous session data safely (disabled to persist logged-in Google account cookies)
-# rm -rf "$PROFILE_DIR"
+# Clear Chrome Singleton lock files to prevent startup hangs after unclean shutdowns
+rm -f "$PROFILE_DIR/SingletonLock" "$PROFILE_DIR/SingletonSocket" "$PROFILE_DIR/SingletonCookie"
 mkdir -p "$PROFILE_DIR"
 
 
-# Start Google Chrome forcing a new isolated instance on macOS
-open -n -a "Google Chrome" --args --user-data-dir="$PROFILE_DIR" --load-extension="/Users/charitydupont/Desktop/Luna 2.0 Meet Companion/meet-extension" --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --remote-debugging-port=9223 --allow-insecure-localhost --ignore-certificate-errors --autoplay-policy=no-user-gesture-required "$MEET_URL"
+# Support conditional headless mode (headless by default, specify --headful to show browser window)
+HEADLESS_FLAG="--headless=new"
+if [ "$2" == "--headful" ]; then
+    HEADLESS_FLAG=""
+    echo "Running Chrome in HEADFUL (visible) mode..."
+else
+    echo "Running Chrome in HEADLESS (background) mode..."
+fi
+
+if [ -n "$HEADLESS_FLAG" ]; then
+    # Start Google Chrome binary directly in background with bot bypass flags
+    "$CHROME_PATH" --user-data-dir="$PROFILE_DIR" --load-extension="/Users/charitydupont/Desktop/Luna 2.0 Meet Companion/meet-extension" --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --mute-audio --remote-debugging-port=9223 --allow-insecure-localhost --ignore-certificate-errors --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --window-size=1280,800 --disable-blink-features=AutomationControlled --user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36" "$HEADLESS_FLAG" "$MEET_URL" > /dev/null 2>&1 &
+else
+    # Start Google Chrome forcing a new isolated instance on macOS
+    open -n -a "Google Chrome" --args --user-data-dir="$PROFILE_DIR" --load-extension="/Users/charitydupont/Desktop/Luna 2.0 Meet Companion/meet-extension" --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --remote-debugging-port=9223 --allow-insecure-localhost --ignore-certificate-errors --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --window-size=1280,800 --disable-blink-features=AutomationControlled --user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36" "$MEET_URL"
+fi
 
 
 
