@@ -7,6 +7,7 @@
     
     function sendLunaEvent(type, payload) {
         originalLog("LUNA_EVENT:" + JSON.stringify({ type, payload }));
+        window.postMessage({ type: 'MEET_TO_LUNA', payload: { type, ...payload } }, '*');
     }
 
     function lunaLog(msg) {
