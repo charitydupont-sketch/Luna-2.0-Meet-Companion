@@ -4,6 +4,7 @@ if (window.self === window.top && window.location.search.includes('luna=true')) 
     console.log("[Luna 2.0 Content Script] Bot mode active. Starting native script injection...");
     const processedMessageIds = new Set();
     const processedTexts = new Map(); // Map of key (senderName:text) -> timestamp
+    const sentTexts = new Set(); // Set of locally sent messages to bypass observer reflection
     let cachedSelfName = null;
     let recentlySpokenTexts = [];
 
@@ -238,6 +239,10 @@ function setupChatObserver() {
 
                                 const text = textNode.textContent?.trim();
                                 if (text) {
+                                    if (sentTexts.has(text)) {
+                                        contentLog(`[Luna 2.0] Ignoring own sent message via locally sent cache: "${text}"`);
+                                        return;
+                                    }
                                     const now = Date.now();
                                     const cacheKey = `${senderName}:${text}`;
                                     if (processedTexts.has(cacheKey)) {
@@ -411,6 +416,10 @@ function ensureChatPanelOpen() {
 function sendMeetChatMessage(text) {
     const textarea = document.querySelector('textarea[aria-label*="send a message" i]');
     if (textarea) {
+        // Track locally sent text to prevent loop loops
+        sentTexts.add(text);
+        setTimeout(() => { sentTexts.delete(text); }, 30000);
+
         textarea.value = text;
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
         
