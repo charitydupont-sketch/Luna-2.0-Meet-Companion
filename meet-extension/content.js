@@ -317,10 +317,43 @@ function setupChatObserver() {
 let captionsObserver = null;
 let speakerBuffers = {}; // Map of senderName -> { text: string, timer: timeout }
 
+function querySelectorAllMultiple(parent, selectors) {
+    for (const selector of selectors) {
+        const elements = parent.querySelectorAll(selector);
+        if (elements && elements.length > 0) {
+            return Array.from(elements);
+        }
+    }
+    return [];
+}
+
+function isCaptionsEnabled(ccBtn) {
+    if (!ccBtn) return false;
+    if (ccBtn.getAttribute('aria-pressed') === 'true') return true;
+    if (ccBtn.classList.contains('H2a7wc')) return true;
+    
+    const label = (ccBtn.getAttribute('aria-label') || '').toLowerCase();
+    const tooltip = (ccBtn.getAttribute('data-tooltip') || '').toLowerCase();
+    const text = ccBtn.textContent.toLowerCase();
+    
+    if (label.includes('turn off') || label.includes('disable') || label.includes('hide')) return true;
+    if (tooltip.includes('turn off') || tooltip.includes('disable') || tooltip.includes('hide')) return true;
+    if (text.includes('turn off') || text.includes('disable') || text.includes('hide')) return true;
+    
+    const hasContainer = document.querySelector('[role="region"][aria-label*="caption" i]') !== null ||
+                         document.querySelector('[role="region"][aria-label*="subtitle" i]') !== null ||
+                         document.querySelector('[jsname="dsyhDe"]') !== null ||
+                         document.querySelector('div[aria-label="Captions"]') !== null;
+    if (hasContainer) return true;
+    
+    return false;
+}
+
 function setupCaptionsObserver() {
     const container = document.querySelector('[role="region"][aria-label*="caption" i]') || 
                       document.querySelector('[role="region"][aria-label*="subtitle" i]') || 
-                      document.querySelector('[jsname="dsyhDe"]');
+                      document.querySelector('[jsname="dsyhDe"]') ||
+                      document.querySelector('div[aria-label="Captions"]');
     if (!container) return;
 
     if (captionsObserver) return; // Already observing
@@ -329,11 +362,15 @@ function setupCaptionsObserver() {
 
     captionsObserver = new MutationObserver((mutations) => {
         // Find all active caption blocks inside the container
-        const blocks = container.querySelectorAll('[jsname="c12oMc"]') || 
-                       container.querySelectorAll('.Kc212b') ||
-                       Array.from(container.children);
+        const blocks = querySelectorAllMultiple(container, [
+            '[jsname="c12oMc"]',
+            '.Kc212b',
+            '.nMcdL.bj4p3b'
+        ]);
+        
+        const finalBlocks = blocks.length > 0 ? blocks : Array.from(container.children);
                        
-        blocks.forEach(block => {
+        finalBlocks.forEach(block => {
             // Extract speaker name
             let speakerName = block.querySelector('.NWpY1d')?.textContent?.trim() || 
                               block.querySelector('[jsname="wP3x1"]')?.textContent?.trim() || 
@@ -354,8 +391,10 @@ function setupCaptionsObserver() {
             }
 
             // Extract text parts
-            const textEls = block.querySelectorAll('.ygicle.VbkSUe') || 
-                            block.querySelectorAll('.iTTPOb');
+            const textEls = querySelectorAllMultiple(block, [
+                '.ygicle.VbkSUe',
+                '.iTTPOb'
+            ]);
             let fullText = "";
             textEls.forEach(el => {
                 fullText += el.textContent + " ";
@@ -421,11 +460,11 @@ function setupCaptionsObserver() {
 
 function autoEnableCaptions() {
     const ccBtn = document.querySelector('button[aria-label*="captions" i]') || 
-                  document.querySelector('button[data-tooltip*="captions" i]');
+                  document.querySelector('button[aria-label*="subtitles" i]') ||
+                  document.querySelector('button[data-tooltip*="captions" i]') ||
+                  document.querySelector('button[data-tooltip*="subtitles" i]');
     if (ccBtn) {
-        const isPressed = ccBtn.getAttribute('aria-pressed') === 'true' || 
-                          ccBtn.classList.contains('H2a7wc');
-        if (!isPressed) {
+        if (!isCaptionsEnabled(ccBtn)) {
             contentLog("[Luna 2.0 Extension] Automatically enabling captions for Luna...");
             ccBtn.click();
         }
