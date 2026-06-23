@@ -571,8 +571,9 @@ function ensureUnmuted() {
         setInterval(() => {
             const buttons = document.querySelectorAll('button');
             for (let btn of buttons) {
-                const txt = btn.textContent.toLowerCase();
-                if (txt.includes('admit') || txt.trim() === 'admit') {
+                const txt = (btn.textContent || '').toLowerCase();
+                const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+                if (txt.includes('admit') || aria.includes('admit')) {
                     btn.click();
                     console.log("[Luna 2.0 Host Script] Automatically admitted guest participant.");
                 }
