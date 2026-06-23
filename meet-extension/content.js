@@ -1,8 +1,12 @@
 // Luna 2.0 Google Meet Extension Content Script
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
 
-if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+const isBotMode = window.location.search.includes('luna=true') || sessionStorage.getItem('luna_bot_active') === 'true';
 
-if (window.self === window.top && window.location.search.includes('luna=true')) {
+if (window.self === window.top && isBotMode) {
+    if (window.location.search.includes('luna=true')) {
+        sessionStorage.setItem('luna_bot_active', 'true');
+    }
     console.log("[Luna 2.0 Content Script] Bot mode active. Starting native script injection...");
     const processedMessageIds = new Set();
     const processedTexts = new Map(); // Map of key (senderName:text) -> timestamp

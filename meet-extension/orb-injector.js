@@ -1,5 +1,6 @@
 (function() {
-    if (!window.location.search.includes('luna=true')) return;
+    const isBot = window.location.search.includes('luna=true') || sessionStorage.getItem('luna_bot_active') === 'true';
+    if (!isBot) return;
     window.__luna_content_script_active = true;
     // Safe logging helper (replaces global console.log override to prevent stack overflows)
     const originalLog = console.log;
