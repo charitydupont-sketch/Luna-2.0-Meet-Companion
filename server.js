@@ -32,7 +32,15 @@ function cleanupStaleMeetProcess(callback) {
         activeMeetProcess = null;
     }
     // Cleanly kill any orphaned Chrome instances using our clean profile path
-    exec('pkill -f LunaMeetProfileClean', () => {
+    exec('/usr/bin/pkill -f LunaMeetProfile; /usr/bin/pkill -f luna_cdp_agent.py', (err, stdout, stderr) => {
+        if (err) {
+            console.log(`[Luna 2.0 Server] pkill exited with code/error: ${err.message}`);
+        } else {
+            console.log(`[Luna 2.0 Server] pkill succeeded`);
+        }
+        if (stderr) {
+            console.log(`[Luna 2.0 Server] pkill stderr: ${stderr}`);
+        }
         // Wait 500ms to let OS release sockets
         setTimeout(callback, 500);
     });
