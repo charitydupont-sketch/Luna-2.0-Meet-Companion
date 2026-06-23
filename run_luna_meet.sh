@@ -52,7 +52,11 @@ fi
 
 # Launch the CDP Script Injector Daemon in the background
 echo "Launching CDP Script Injector Daemon..."
-python3 "/Users/charitydupont/Desktop/Luna 2.0 Meet Companion/luna_cdp_agent.py" > /tmp/luna_cdp_agent.log 2>&1 &
+python3 -u "/Users/charitydupont/Desktop/Luna 2.0 Meet Companion/luna_cdp_agent.py" > /tmp/luna_cdp_agent.log 2>&1 &
+
+# Launch the Gemini Brain Daemon in the background
+echo "Launching Gemini Brain Daemon..."
+python3 -u "/Users/charitydupont/Desktop/Luna 2.0 Meet Companion/luna_brain.py" > /tmp/luna_brain.log 2>&1 &
 
 
 

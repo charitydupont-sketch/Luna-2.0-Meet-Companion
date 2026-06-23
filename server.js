@@ -32,7 +32,7 @@ function cleanupStaleMeetProcess(callback) {
         activeMeetProcess = null;
     }
     // Cleanly kill any orphaned Chrome instances using our clean profile path
-    exec('/usr/bin/pkill -f LunaMeetProfile; /usr/bin/pkill -f luna_cdp_agent.py', (err, stdout, stderr) => {
+    exec('/usr/bin/pkill -f LunaMeetProfile; /usr/bin/pkill -f luna_cdp_agent.py; /usr/bin/pkill -f luna_brain.py', (err, stdout, stderr) => {
         if (err) {
             console.log(`[Luna 2.0 Server] pkill exited with code/error: ${err.message}`);
         } else {
@@ -307,40 +307,53 @@ function handleServerOrchestration(event) {
         if (isChat || isMention) {
             console.log(`[Server Orchestration] Triggered by ${event.type} from ${sender}: "${text}"`);
             
-            // Set state to thinking
-            queueToMeet.push({ state: 'thinking' });
+            const firstName = sender ? sender.split(' ')[0] : 'there';
             
-            setTimeout(() => {
-                let reply = "";
-                
-                const firstName = sender ? sender.split(' ')[0] : 'there';
-                
-                if (normalized.includes('build calculator') || normalized.includes('create calculator')) {
-                    reply = `Certainly, ${firstName}! Creating a Calculator prototype in your Sandbox window.`;
-                    queueToHub.push({ type: 'SANDBOX_ACTION', template: 'calculator' });
-                } else if (normalized.includes('build landing') || normalized.includes('create website')) {
-                    reply = `Sure thing, ${firstName}! I have generated a landing page layout in your Sandbox.`;
-                    queueToHub.push({ type: 'SANDBOX_ACTION', template: 'landing' });
-                } else {
-                    reply = `Hi ${firstName}! Hey, how are you?`;
-                }
-                
-                console.log(`[Server Orchestration] Generated reply: "${reply}"`);
-                
-                // Dispatch response actions to Google Meet
-                queueToMeet.push({ state: 'speaking' });
-                queueToMeet.push({ text: reply });
-                
-                // Mirror the interaction in the Hub chat history log
-                const label = event.type === 'MEET_CHAT' ? `[Meet Chat: ${sender}]` : `[Meet Mention: ${sender}]`;
-                queueToHub.push({ type: 'MEET_CHAT_MIRROR', sender: 'user', text: `${label} ${text}` });
-                queueToHub.push({ type: 'MEET_CHAT_MIRROR', sender: 'luna', text: reply });
-                
-                // Also set state back to idle after a duration
+            if (normalized.includes('build calculator') || normalized.includes('create calculator')) {
+                // Set state to thinking
+                queueToMeet.push({ state: 'thinking' });
                 setTimeout(() => {
-                    queueToMeet.push({ state: 'idle' });
-                }, 4000);
-            }, 1200);
+                    const reply = `Certainly, ${firstName}! Creating a Calculator prototype in your Sandbox window.`;
+                    queueToHub.push({ type: 'SANDBOX_ACTION', template: 'calculator' });
+                    
+                    console.log(`[Server Orchestration] Generated reply: "${reply}"`);
+                    
+                    // Dispatch response actions to Google Meet
+                    queueToMeet.push({ state: 'speaking' });
+                    queueToMeet.push({ text: reply });
+                    
+                    // Mirror the interaction in the Hub chat history log
+                    queueToHub.push({ type: 'MEET_CHAT_MIRROR', sender: 'user', text: `[Sandbox Command: ${sender}] ${text}` });
+                    queueToHub.push({ type: 'MEET_CHAT_MIRROR', sender: 'luna', text: reply });
+                    
+                    setTimeout(() => {
+                        queueToMeet.push({ state: 'idle' });
+                    }, 4000);
+                }, 1200);
+            } else if (normalized.includes('build landing') || normalized.includes('create website')) {
+                // Set state to thinking
+                queueToMeet.push({ state: 'thinking' });
+                setTimeout(() => {
+                    const reply = `Sure thing, ${firstName}! I have generated a landing page layout in your Sandbox.`;
+                    queueToHub.push({ type: 'SANDBOX_ACTION', template: 'landing' });
+                    
+                    console.log(`[Server Orchestration] Generated reply: "${reply}"`);
+                    
+                    // Dispatch response actions to Google Meet
+                    queueToMeet.push({ state: 'speaking' });
+                    queueToMeet.push({ text: reply });
+                    
+                    // Mirror the interaction in the Hub chat history log
+                    queueToHub.push({ type: 'MEET_CHAT_MIRROR', sender: 'user', text: `[Sandbox Command: ${sender}] ${text}` });
+                    queueToHub.push({ type: 'MEET_CHAT_MIRROR', sender: 'luna', text: reply });
+                    
+                    setTimeout(() => {
+                        queueToMeet.push({ state: 'idle' });
+                    }, 4000);
+                }, 1200);
+            } else {
+                console.log(`[Server Orchestration] Delegating response generation to external brain (luna_brain.py)...`);
+            }
         }
     }
 }
