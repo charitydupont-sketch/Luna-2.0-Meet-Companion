@@ -140,7 +140,7 @@ def main_loop():
             # Silence poll errors (in case server is restarting)
             pass
             
-        time.sleep(1.0)
+        time.sleep(0.2)
 
 if __name__ == "__main__":
     try:

@@ -1,5 +1,7 @@
 // Luna 2.0 Google Meet Extension Content Script
 
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+
 if (window.self === window.top && window.location.search.includes('luna=true')) {
     console.log("[Luna 2.0 Content Script] Bot mode active. Starting native script injection...");
     const processedMessageIds = new Set();
@@ -450,7 +452,7 @@ function setupCaptionsObserver() {
                     
                     // Clear buffer text so we don't repeat
                     buffer.text = "";
-                }, 1800); // 1.8 seconds silence threshold
+                }, 900); // 0.9 seconds silence threshold
             }
         });
     });
@@ -584,3 +586,5 @@ function ensureUnmuted() {
         window.addEventListener('load', runHostAutoAdmit);
     }
 }
+}
+
