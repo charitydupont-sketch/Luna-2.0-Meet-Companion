@@ -259,7 +259,7 @@ const server = http.createServer((req, res) => {
 
     // Static Files Server routing
     let target = req.url;
-    if (target === '/') target = 'index.html';
+    if (target === '/') target = 'connect.html';
     else if (target === '/connect' || target === '/join') target = 'connect.html';
     let filePath = path.join(PUBLIC_DIR, target);
     
@@ -313,14 +313,16 @@ function handleServerOrchestration(event) {
             setTimeout(() => {
                 let reply = "";
                 
+                const firstName = sender ? sender.split(' ')[0] : 'there';
+                
                 if (normalized.includes('build calculator') || normalized.includes('create calculator')) {
-                    reply = `Certainly, ${sender}! Creating a Calculator prototype in your Sandbox window.`;
+                    reply = `Certainly, ${firstName}! Creating a Calculator prototype in your Sandbox window.`;
                     queueToHub.push({ type: 'SANDBOX_ACTION', template: 'calculator' });
                 } else if (normalized.includes('build landing') || normalized.includes('create website')) {
-                    reply = `Sure thing, ${sender}! I have generated a landing page layout in your Sandbox.`;
+                    reply = `Sure thing, ${firstName}! I have generated a landing page layout in your Sandbox.`;
                     queueToHub.push({ type: 'SANDBOX_ACTION', template: 'landing' });
                 } else {
-                    reply = `Hi ${sender}! I received your message: "${text}"`;
+                    reply = `Hi ${firstName}! Hey, how are you?`;
                 }
                 
                 console.log(`[Server Orchestration] Generated reply: "${reply}"`);
