@@ -202,38 +202,37 @@ def main_loop():
                                     # Fallback to raw text if model failed to output valid JSON
                                     reply = reply_json
                                     action = None
-
-                            if reply:
-                                print(f"[Luna Brain] Replying to {sender}: \"{reply}\"")
-                                # Add Luna's own reply to history
-                                conversation_history.append({"sender": "Luna 2.0", "text": reply})
-                                if len(conversation_history) > 20:
-                                    conversation_history.pop(0)
-
-                                # Send speaking state and text
-                                post_to_meet({
-                                    "state": "speaking",
-                                    "text": reply
-                                })
-                                
-                                # Send sandbox action if requested by AI
-                                if action:
-                                    print(f"[Luna Brain] AI triggered sandbox action: {action}")
-                                    post_to_meet(action)
-                                
-                                # Estimate duration to speak the text (approx 150 words per minute -> 2.5 words per second)
-                                word_count = len(reply.split())
-                                sleep_duration = max(3.0, word_count / 2.5)
-                                speaking_ends_at = time.time() + sleep_duration
-                                is_speaking = True
-                                
-                                # Update session variables
-                                session_active = True
-                                session_expires_at = speaking_ends_at + 10.0
                             else:
-                                post_to_meet({"state": "idle"})
+                                print("[Luna Brain] Failed to generate a reply from Gemini.")
+
+                        if reply:
+                            print(f"[Luna Brain] Replying to {sender}: \"{reply}\"")
+                            # Add Luna's own reply to history
+                            conversation_history.append({"sender": "Luna 2.0", "text": reply})
+                            if len(conversation_history) > 20:
+                                conversation_history.pop(0)
+
+                            # Send speaking state and text
+                            post_to_meet({
+                                "state": "speaking",
+                                "text": reply
+                            })
+                            
+                            # Send sandbox action if requested by AI
+                            if action:
+                                print(f"[Luna Brain] AI triggered sandbox action: {action}")
+                                post_to_meet(action)
+                            
+                            # Estimate duration to speak the text (approx 150 words per minute -> 2.5 words per second)
+                            word_count = len(reply.split())
+                            sleep_duration = max(3.0, word_count / 2.5)
+                            speaking_ends_at = time.time() + sleep_duration
+                            is_speaking = True
+                            
+                            # Update session variables
+                            session_active = True
+                            session_expires_at = speaking_ends_at + 10.0
                         else:
-                            print("[Luna Brain] Failed to generate a reply.")
                             post_to_meet({"state": "idle"})
                             
         except Exception as e:
