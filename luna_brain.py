@@ -152,7 +152,7 @@ def main_loop():
                             "Transcript:\n"
                             f"{history_text}\n"
                             "Respond to the last message, keeping the conversation context in mind. "
-                            "Keep your response natural, short, and friendly (1 to 2 sentences max). Do not use markdown bold/italics or other markup.\n"
+                            "Keep your response natural, short, and friendly (1 to 2 sentences max). You can occasionally ask a brief, natural follow-up question to keep the conversation flowing. Do not use markdown bold/italics or other markup.\n"
                             "Luna 2.0:"
                         )
                         
