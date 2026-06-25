@@ -29,6 +29,7 @@
         currentAudio: null,
         pendingCaptions: "",
         captionsTimeout: null,
+        lastFetchedText: "",
         colors: {
             idle: ['rgba(99, 102, 241, 0.45)', 'rgba(217, 70, 239, 0.35)', 'rgba(6, 182, 212, 0.25)'],
             listening: ['rgba(6, 182, 212, 0.65)', 'rgba(99, 102, 241, 0.45)', 'rgba(16, 185, 129, 0.3)'],
@@ -249,6 +250,7 @@
 
             audio.onended = () => {
                 state.currentStatus = 'idle';
+                state.lastFetchedText = "";
                 if (state.currentAudio === audio) {
                     state.currentAudio = null;
                 }
@@ -297,7 +299,10 @@
                         }, displayDuration);
                     }
                 };
-                utterance.onend = () => { state.currentStatus = 'idle'; };
+                utterance.onend = () => {
+                    state.currentStatus = 'idle';
+                    state.lastFetchedText = "";
+                };
                 window.speechSynthesis.speak(utterance);
             }
             if (e.data.type === 'LUNA_SYNC') {
@@ -314,6 +319,7 @@
                     window.speechSynthesis.cancel();
                     state.currentStatus = 'idle';
                     state.targetRadius = 100;
+                    state.lastFetchedText = "";
                     
                     // Clear timeout and hide captions instantly on interrupt
                     if (state.captionsTimeout) clearTimeout(state.captionsTimeout);
@@ -328,7 +334,11 @@
                     else state.targetRadius = 100;
                 }
                 if (update.text) {
-                    // Store in pendingCaptions and fetch audio first (do not display yet)
+                    // Prevent double-fetching/playing the same text payload
+                    if (state.lastFetchedText === update.text) {
+                        return;
+                    }
+                    state.lastFetchedText = update.text;
                     state.pendingCaptions = update.text;
                     playLunaVoice(update.text);
                 }
