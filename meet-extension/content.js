@@ -324,6 +324,7 @@ function setupChatObserver() {
 let observedCaptionsContainer = null;
 let captionsObserver = null;
 let speakerBuffers = {}; // Map of senderName -> { text: string, timer: timeout }
+let sentCaptions = [];    // Array of { sender, text, timestamp } to deduplicate sent captions
 
 function querySelectorAllMultiple(parent, selectors) {
     for (const selector of selectors) {
@@ -476,11 +477,29 @@ function setupCaptionsObserver() {
                 buffer.timer = setTimeout(() => {
                     // Silence threshold reached: Speaker has finished speaking!
                     const finishedText = buffer.text;
+                    
+                    // Deduplicate sent captions using memory cache
+                    const now = Date.now();
+                    sentCaptions = sentCaptions.filter(item => now - item.timestamp < 6000);
+                    const alreadySent = sentCaptions.some(item => item.sender === speakerName && item.text === finishedText);
+                    if (alreadySent) {
+                        contentLog(`[Luna 2.0 Captions] Already sent this caption recently (ignoring duplicate): ${finishedText}`);
+                        buffer.text = "";
+                        return;
+                    }
+                    
                     contentLog(`[Luna 2.0 Captions] ${speakerName} finished speaking: ${finishedText}`);
                     
                     // Mark the text elements as sent so they are not processed again
                     activeTextEls.forEach(el => {
                         el.setAttribute('data-luna-sent', 'true');
+                    });
+                    
+                    // Add to sent cache
+                    sentCaptions.push({
+                        sender: speakerName,
+                        text: finishedText,
+                        timestamp: now
                     });
                     
                     // Send to Luna Hub
