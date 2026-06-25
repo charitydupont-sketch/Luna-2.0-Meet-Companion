@@ -167,13 +167,15 @@ def main_loop():
                         for turn in conversation_history:
                             history_text += f"{turn['sender']}: {turn['text']}\n"
 
-                        # Check for hardcoded creator queries
-                        hardcoded_reply = check_hardcoded_queries(text)
+                        # Check for pure mention/wake-up trigger
+                        first_name = sender.split()[0] if sender else "there"
+                        clean_text = text.strip().lower().replace("?", "").replace(".", "").replace(",", "")
+                        is_pure_mention = clean_text in ["luna", "hey luna", "hi luna", "loona", "lunar"]
                         
-                        reply = None
-                        action = None
-                        
-                        if hardcoded_reply:
+                        if is_pure_mention:
+                            reply = f"Yes, {first_name}?"
+                            action = None
+                        elif hardcoded_reply:
                             reply = hardcoded_reply
                             action = None
                         else:
