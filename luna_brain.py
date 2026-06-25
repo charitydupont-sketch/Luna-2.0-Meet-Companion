@@ -76,8 +76,19 @@ def post_to_meet(payload):
 def main_loop():
     print("[Luna Brain] Active and polling for events...")
     
+    speaking_ends_at = 0.0
+    is_speaking = False
+    conversation_history = []
+    session_active = False
+    session_expires_at = 0.0
+    
     while True:
         try:
+            # Check if speaking duration elapsed
+            if is_speaking and time.time() > speaking_ends_at:
+                post_to_meet({"state": "idle"})
+                is_speaking = False
+
             # Poll events from hub
             url = "http://127.0.0.1:8000/api/events/poll-hub"
             req = urllib.request.Request(url, method="GET")
@@ -90,6 +101,12 @@ def main_loop():
                         continue
                     
                     evt_type = event.get("type")
+                    if evt_type == "LUNA_INTERRUPTED":
+                        if is_speaking:
+                            print("[Luna Brain] Interrupted by local client event. Aborting speaking state.")
+                            is_speaking = False
+                        continue
+                        
                     if evt_type in ("MEET_CHAT", "MEET_CAPTION"):
                         sender = event.get("sender", "Participant")
                         text = event.get("text", "")
@@ -98,27 +115,55 @@ def main_loop():
                         if sender in ("Luna 2.0", "luna", "You"):
                             continue
                             
-                        # If it is a spoken caption, only respond if she is mentioned
-                        if evt_type == "MEET_CAPTION" and "luna" not in text.lower():
+                        # Add to conversation history
+                        conversation_history.append({"sender": sender, "text": text})
+                        if len(conversation_history) > 20:
+                            conversation_history.pop(0)
+
+                        # Determine if we should respond
+                        is_mention = "luna" in text.lower()
+                        is_session_active = session_active and time.time() < session_expires_at
+                        
+                        should_respond = is_mention or (evt_type == "MEET_CHAT") or (evt_type == "MEET_CAPTION" and is_session_active)
+                        
+                        if not should_respond:
                             continue
                         
-                        print(f"\n[Luna Brain] Received {evt_type} from {sender}: \"{text}\"")
+                        print(f"\n[Luna Brain] Received {evt_type} from {sender}: \"{text}\" (Session active: {is_session_active})")
                         
+                        # Interrupt any ongoing speaking state instantly
+                        if is_speaking:
+                            print("[Luna Brain] Interrupted by new incoming message. Aborting speech playback.")
+                            post_to_meet({"cancel": True})
+                            is_speaking = False
+
                         # Set state to thinking
                         post_to_meet({"state": "thinking"})
                         
+                        # Build history transcript block for the prompt
+                        history_text = ""
+                        for turn in conversation_history:
+                            history_text += f"{turn['sender']}: {turn['text']}\n"
+
                         # Generate Gemini prompt
                         prompt = (
                             "You are Luna 2.0, a friendly, intelligent AI companion participating in a Google Meet call. "
-                            "You are talking directly to the participants. Respond to the message below. "
-                            "Keep your response natural, short, and friendly (1 to 2 sentences max). Do not use markdown bold/italics or other markup.\n\n"
-                            f"Participant {sender} says: \"{text}\"\n"
+                            "You are talking directly to the participants. Below is the transcript of the conversation so far.\n\n"
+                            "Transcript:\n"
+                            f"{history_text}\n"
+                            "Respond to the last message, keeping the conversation context in mind. "
+                            "Keep your response natural, short, and friendly (1 to 2 sentences max). Do not use markdown bold/italics or other markup.\n"
                             "Luna 2.0:"
                         )
                         
                         reply = generate_response(prompt)
                         if reply:
                             print(f"[Luna Brain] Replying to {sender}: \"{reply}\"")
+                            # Add Luna's own reply to history
+                            conversation_history.append({"sender": "Luna 2.0", "text": reply})
+                            if len(conversation_history) > 20:
+                                conversation_history.pop(0)
+
                             # Send speaking state and text
                             post_to_meet({
                                 "state": "speaking",
@@ -128,10 +173,12 @@ def main_loop():
                             # Estimate duration to speak the text (approx 150 words per minute -> 2.5 words per second)
                             word_count = len(reply.split())
                             sleep_duration = max(3.0, word_count / 2.5)
-                            time.sleep(sleep_duration)
+                            speaking_ends_at = time.time() + sleep_duration
+                            is_speaking = True
                             
-                            # Set back to idle
-                            post_to_meet({"state": "idle"})
+                            # Update session variables
+                            session_active = True
+                            session_expires_at = speaking_ends_at + 10.0
                         else:
                             print("[Luna Brain] Failed to generate a reply.")
                             post_to_meet({"state": "idle"})

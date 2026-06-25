@@ -13,6 +13,7 @@ if (window.self === window.top && isBotMode) {
     const sentTexts = new Set(); // Set of locally sent messages to bypass observer reflection
     let cachedSelfName = null;
     let recentlySpokenTexts = [];
+    let isLunaSpeaking = false;
 
     function findSelfName() {
         if (cachedSelfName) return cachedSelfName;
@@ -401,8 +402,12 @@ function setupCaptionsObserver() {
                 '.ygicle.VbkSUe',
                 '.iTTPOb'
             ]);
+            
+            // Filter out text elements that have already been sent to avoid duplicate processing
+            const activeTextEls = textEls.filter(el => el.getAttribute('data-luna-sent') !== 'true');
+            
             let fullText = "";
-            textEls.forEach(el => {
+            activeTextEls.forEach(el => {
                 fullText += el.textContent + " ";
             });
             fullText = fullText.trim();
@@ -426,6 +431,22 @@ function setupCaptionsObserver() {
                 return;
             }
 
+            // Local interruption detection
+            if (isLunaSpeaking) {
+                contentLog(`[Luna 2.0 Extension] Local interruption detected by ${speakerName}! Aborting Luna's speech playback.`);
+                isLunaSpeaking = false;
+                
+                // Immediately cancel audio playback in the page context
+                window.postMessage({ type: 'LUNA_SYNC', payload: { cancel: true } }, '*');
+                
+                // Immediately notify the hub/brain that we were interrupted so it cancels on its end too
+                fetch('http://127.0.0.1:8000/api/events/to-hub', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'LUNA_INTERRUPTED', sender: speakerName })
+                }).catch(() => {});
+            }
+
             // Update the speaker's text buffer
             if (!speakerBuffers[speakerName]) {
                 speakerBuffers[speakerName] = { text: "", timer: null };
@@ -443,6 +464,11 @@ function setupCaptionsObserver() {
                     // Silence threshold reached: Speaker has finished speaking!
                     const finishedText = buffer.text;
                     contentLog(`[Luna 2.0 Captions] ${speakerName} finished speaking: ${finishedText}`);
+                    
+                    // Mark the text elements as sent so they are not processed again
+                    activeTextEls.forEach(el => {
+                        el.setAttribute('data-luna-sent', 'true');
+                    });
                     
                     // Send to Luna Hub
                     window.postMessage({
@@ -542,6 +568,15 @@ function ensureUnmuted() {
                 .then(events => {
                     events.forEach(event => {
                         contentLog("[Luna 2.0 Extension] Polled event received from server: " + JSON.stringify(event));
+                        
+                        if (event) {
+                            if (event.state) {
+                                isLunaSpeaking = (event.state === 'speaking');
+                            }
+                            if (event.cancel) {
+                                isLunaSpeaking = false;
+                            }
+                        }
                         
                         if (event && event.text) {
                             // Automatically type and send the text response in Google Meet chat!
