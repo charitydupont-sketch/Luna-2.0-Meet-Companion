@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { execFile, exec } = require('child_process');
@@ -22,6 +23,124 @@ let queueToHub = [];
 let queueToApp = [];
 let queueToMeet = [];
 let activeMeetProcess = null;
+
+function getAccessToken(callback) {
+    exec('gcloud auth application-default print-access-token', (err, stdout, stderr) => {
+        if (err) {
+            console.error("[TTS Server Error] Failed to get OAuth token:", err);
+            callback(null);
+            return;
+        }
+        callback(stdout.trim());
+    });
+}
+
+function callGoogleCloudTTS(text, token, callback) {
+    const postData = JSON.stringify({
+        input: { text: text },
+        voice: {
+            languageCode: 'en-US',
+            name: 'en-US-Chirp3-HD-Achernar'
+        },
+        audioConfig: {
+            audioEncoding: 'LINEAR16',
+            sampleRateHertz: 22050
+        }
+    });
+
+    const options = {
+        hostname: 'texttospeech.googleapis.com',
+        port: 443,
+        path: '/v1/text:synthesize',
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    };
+
+    const req = https.request(options, (res) => {
+        let body = '';
+        res.on('data', (chunk) => body += chunk);
+        res.on('end', () => {
+            if (res.statusCode !== 200) {
+                console.error("[GCloud TTS Error] API returned status code:", res.statusCode, body);
+                callback(null);
+                return;
+            }
+            try {
+                const responseData = JSON.parse(body);
+                const audioContent = responseData.audioContent;
+                if (audioContent) {
+                    const audioBuffer = Buffer.from(audioContent, 'base64');
+                    callback(audioBuffer);
+                } else {
+                    console.error("[GCloud TTS Error] Response missing audioContent");
+                    callback(null);
+                }
+            } catch (e) {
+                console.error("[GCloud TTS Error] Failed to parse API response JSON:", e);
+                callback(null);
+            }
+        });
+    });
+
+    req.on('error', (e) => {
+        console.error("[GCloud TTS Error] HTTPS request failed:", e);
+        callback(null);
+    });
+
+    req.write(postData);
+    req.end();
+}
+
+function fallbackToMacSay(text, res) {
+    console.log("[TTS API Fallback] Using macOS native say command...");
+    const timestamp = Date.now();
+    const aiffPath = path.join('/tmp', `speech_${timestamp}.aiff`);
+    const wavPath = path.join('/tmp', `speech_${timestamp}.wav`);
+
+    // Run macOS say command
+    execFile('/usr/bin/say', ['-o', aiffPath, text], (err, stdout, stderr) => {
+        if (err) {
+            console.error('[TTS API Error] say command failed:', err, 'Stderr:', stderr);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('Failed to generate speech');
+            return;
+        }
+
+        // Convert AIFF to WAV
+        execFile('/usr/bin/afconvert', ['-f', 'WAVE', '-d', 'LEI16@22050', aiffPath, wavPath], (err2) => {
+            // Clean up AIFF file
+            fs.unlink(aiffPath, () => {});
+
+            if (err2) {
+                console.error('[TTS API Error] afconvert failed:', err2);
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Failed to convert speech');
+                return;
+            }
+
+            // Serve the WAV file
+            const stream = fs.createReadStream(wavPath);
+            stream.on('error', (streamErr) => {
+                console.error('[TTS Server Error] Read stream failed:', streamErr.message);
+                if (!res.headersSent) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('File read error');
+                }
+            });
+            res.writeHead(200, { 'Content-Type': 'audio/wav' });
+            stream.pipe(res);
+
+            // Clean up WAV file after sending
+            res.on('finish', () => {
+                fs.unlink(wavPath, () => {});
+            });
+        });
+    });
+}
 
 function cleanupStaleMeetProcess(callback) {
     console.log("[Luna 2.0 Server] Cleaning up stale Chrome bot processes...");
@@ -143,48 +262,20 @@ const server = http.createServer((req, res) => {
             return;
         }
 
-        const timestamp = Date.now();
-        const aiffPath = path.join('/tmp', `speech_${timestamp}.aiff`);
-        const wavPath = path.join('/tmp', `speech_${timestamp}.wav`);
-
-        // Run macOS say command
-        execFile('/usr/bin/say', ['-o', aiffPath, text], (err, stdout, stderr) => {
-            if (err) {
-                console.error('[TTS API Error] say command failed:', err, 'Stderr:', stderr);
-                res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end('Failed to generate speech');
-                return;
-            }
-
-            // Convert AIFF to WAV
-            execFile('/usr/bin/afconvert', ['-f', 'WAVE', '-d', 'LEI16@22050', aiffPath, wavPath], (err2) => {
-                // Clean up AIFF file
-                fs.unlink(aiffPath, () => {});
-
-                if (err2) {
-                    console.error('[TTS API Error] afconvert failed:', err2);
-                    res.writeHead(500, { 'Content-Type': 'text/plain' });
-                    res.end('Failed to convert speech');
-                    return;
-                }
-
-                // Serve the WAV file
-                const stream = fs.createReadStream(wavPath);
-                stream.on('error', (streamErr) => {
-                    console.error('[TTS Server Error] Read stream failed:', streamErr.message);
-                    if (!res.headersSent) {
-                        res.writeHead(500, { 'Content-Type': 'text/plain' });
-                        res.end('File read error');
+        getAccessToken((token) => {
+            if (token) {
+                callGoogleCloudTTS(text, token, (audioBuffer) => {
+                    if (audioBuffer) {
+                        console.log("[TTS API] Successfully generated Chirp3 HD voice (Achernar) for:", text);
+                        res.writeHead(200, { 'Content-Type': 'audio/wav' });
+                        res.end(audioBuffer);
+                        return;
                     }
+                    fallbackToMacSay(text, res);
                 });
-                res.writeHead(200, { 'Content-Type': 'audio/wav' });
-                stream.pipe(res);
-
-                // Clean up WAV file after sending
-                res.on('finish', () => {
-                    fs.unlink(wavPath, () => {});
-                });
-            });
+            } else {
+                fallbackToMacSay(text, res);
+            }
         });
         return;
     }
