@@ -151,34 +151,65 @@ def main_loop():
                             "You are talking directly to the participants. Below is the transcript of the conversation so far.\n\n"
                             "Transcript:\n"
                             f"{history_text}\n"
-                            "Respond to the last message, keeping the conversation context in mind. "
-                            "Keep your response natural, short, and friendly (1 to 2 sentences max). You can occasionally ask a brief, natural follow-up question to keep the conversation flowing. Do not use markdown bold/italics or other markup.\n"
-                            "Luna 2.0:"
+                            "Respond to the last message, keeping the conversation context in mind.\n\n"
+                            "You MUST respond in a valid JSON format with the following keys:\n"
+                            "1. \"reply\": A natural, short, and friendly text response (1 to 2 sentences max, no markdown/markup) to be spoken. You can occasionally ask a brief, natural follow-up question to keep the conversation flowing.\n"
+                            "2. \"action\": An optional object if the user explicitly requests showing, switching, building, or rendering a template/prototype in the sandbox. If they request the calculator, set this to {\"type\": \"SANDBOX_ACTION\", \"template\": \"calculator\"}. If they request a landing page or website, set this to {\"type\": \"SANDBOX_ACTION\", \"template\": \"landing\"}. Otherwise, set this to null.\n\n"
+                            "Ensure your entire output is a single valid JSON block, with no other text around it."
                         )
                         
-                        reply = generate_response(prompt)
-                        if reply:
-                            print(f"[Luna Brain] Replying to {sender}: \"{reply}\"")
-                            # Add Luna's own reply to history
-                            conversation_history.append({"sender": "Luna 2.0", "text": reply})
-                            if len(conversation_history) > 20:
-                                conversation_history.pop(0)
+                        reply_json = generate_response(prompt)
+                        if reply_json:
+                            reply = ""
+                            action = None
+                            
+                            try:
+                                # Clean up markdown block formatting if present
+                                clean_json = reply_json.strip()
+                                if clean_json.startswith("```"):
+                                    clean_json = clean_json.split("\n", 1)[1]
+                                    if clean_json.endswith("```"):
+                                        clean_json = clean_json.rsplit("\n", 1)[0]
+                                clean_json = clean_json.strip()
+                                
+                                response_data = json.loads(clean_json)
+                                reply = response_data.get("reply", "")
+                                action = response_data.get("action")
+                            except Exception as e:
+                                print(f"[Luna Brain Error] Failed to parse JSON response: {e}. Raw response: {reply_json}")
+                                # Fallback to raw text if model failed to output valid JSON
+                                reply = reply_json
+                                action = None
 
-                            # Send speaking state and text
-                            post_to_meet({
-                                "state": "speaking",
-                                "text": reply
-                            })
-                            
-                            # Estimate duration to speak the text (approx 150 words per minute -> 2.5 words per second)
-                            word_count = len(reply.split())
-                            sleep_duration = max(3.0, word_count / 2.5)
-                            speaking_ends_at = time.time() + sleep_duration
-                            is_speaking = True
-                            
-                            # Update session variables
-                            session_active = True
-                            session_expires_at = speaking_ends_at + 10.0
+                            if reply:
+                                print(f"[Luna Brain] Replying to {sender}: \"{reply}\"")
+                                # Add Luna's own reply to history
+                                conversation_history.append({"sender": "Luna 2.0", "text": reply})
+                                if len(conversation_history) > 20:
+                                    conversation_history.pop(0)
+
+                                # Send speaking state and text
+                                post_to_meet({
+                                    "state": "speaking",
+                                    "text": reply
+                                })
+                                
+                                # Send sandbox action if requested by AI
+                                if action:
+                                    print(f"[Luna Brain] AI triggered sandbox action: {action}")
+                                    post_to_meet(action)
+                                
+                                # Estimate duration to speak the text (approx 150 words per minute -> 2.5 words per second)
+                                word_count = len(reply.split())
+                                sleep_duration = max(3.0, word_count / 2.5)
+                                speaking_ends_at = time.time() + sleep_duration
+                                is_speaking = True
+                                
+                                # Update session variables
+                                session_active = True
+                                session_expires_at = speaking_ends_at + 10.0
+                            else:
+                                post_to_meet({"state": "idle"})
                         else:
                             print("[Luna Brain] Failed to generate a reply.")
                             post_to_meet({"state": "idle"})
