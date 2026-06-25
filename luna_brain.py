@@ -1,3 +1,4 @@
+import os
 import urllib.request
 import urllib.error
 import json
@@ -25,30 +26,49 @@ def get_access_token():
         return None
 
 def generate_response(prompt):
-    token = get_access_token()
-    if not token:
-        return None
-        
-    project_id = "gdm-inception"
-    url = f"https://us-central1-aiplatform.googleapis.com/v1/projects/{project_id}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent"
+    api_key = os.environ.get("GEMINI_API_KEY")
     
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-    
-    body = {
-        "contents": {
-            "role": "user",
-            "parts": {
-                "text": prompt
-            }
-        },
-        "generationConfig": {
-            "maxOutputTokens": 1024,
-            "temperature": 0.7
+    if api_key:
+        # Standard free Gemini AI Studio endpoint
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+        headers = {
+            "Content-Type": "application/json"
         }
-    }
+        body = {
+            "contents": [{
+                "parts": [{
+                    "text": prompt
+                }]
+            }],
+            "generationConfig": {
+                "maxOutputTokens": 1024,
+                "temperature": 0.7
+            }
+        }
+    else:
+        # GCP Vertex AI endpoint
+        token = get_access_token()
+        if not token:
+            print("[Luna Brain Error] No GEMINI_API_KEY environment variable found and failed to get GCP OAuth token. Cannot generate response.")
+            return None
+            
+        project_id = os.environ.get("GCP_PROJECT", "gdm-inception")
+        url = f"https://us-central1-aiplatform.googleapis.com/v1/projects/{project_id}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        body = {
+            "contents": [{
+                "parts": [{
+                    "text": prompt
+                }]
+            }],
+            "generationConfig": {
+                "maxOutputTokens": 1024,
+                "temperature": 0.7
+            }
+        }
     
     req = urllib.request.Request(
         url,
