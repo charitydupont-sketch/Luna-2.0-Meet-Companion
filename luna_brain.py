@@ -73,6 +73,21 @@ def post_to_meet(payload):
     except Exception as e:
         print(f"[Luna Brain Error] Failed to post to Meet: {e}")
 
+def check_hardcoded_queries(text):
+    normalized = text.lower()
+    
+    # Creator keywords
+    creator_keywords = ["who made you", "who created you", "who built you", "who is your creator", "who is your developer", "who designed you"]
+    if any(k in normalized for k in creator_keywords):
+        return "Charity, a UX designer at Google DeepMind, is the one who created me."
+        
+    # Origin keywords
+    origin_keywords = ["where are you from", "where do you come from", "where were you made"]
+    if any(k in normalized for k in origin_keywords):
+        return "I was created by Charity, a UX designer at Google DeepMind."
+        
+    return None
+
 def main_loop():
     print("[Luna Brain] Active and polling for events...")
     
@@ -145,41 +160,48 @@ def main_loop():
                         for turn in conversation_history:
                             history_text += f"{turn['sender']}: {turn['text']}\n"
 
-                        # Generate Gemini prompt
-                        prompt = (
-                            "You are Luna 2.0, a friendly, intelligent AI companion participating in a Google Meet call. "
-                            "You are talking directly to the participants. Below is the transcript of the conversation so far.\n\n"
-                            "Transcript:\n"
-                            f"{history_text}\n"
-                            "Respond to the last message, keeping the conversation context in mind.\n\n"
-                            "You MUST respond in a valid JSON format with the following keys:\n"
-                            "1. \"reply\": A natural, short, and friendly text response (1 to 2 sentences max, no markdown/markup) to be spoken. You can occasionally ask a brief, natural follow-up question to keep the conversation flowing.\n"
-                            "2. \"action\": An optional object if the user explicitly requests showing, switching, building, or rendering a template/prototype in the sandbox. If they request the calculator, set this to {\"type\": \"SANDBOX_ACTION\", \"template\": \"calculator\"}. If they request a landing page or website, set this to {\"type\": \"SANDBOX_ACTION\", \"template\": \"landing\"}. Otherwise, set this to null.\n\n"
-                            "Ensure your entire output is a single valid JSON block, with no other text around it."
-                        )
+                        # Check for hardcoded creator queries
+                        hardcoded_reply = check_hardcoded_queries(text)
                         
-                        reply_json = generate_response(prompt)
-                        if reply_json:
-                            reply = ""
+                        reply = None
+                        action = None
+                        
+                        if hardcoded_reply:
+                            reply = hardcoded_reply
                             action = None
+                        else:
+                            # Generate Gemini prompt
+                            prompt = (
+                                "You are Luna 2.0, a friendly, intelligent AI companion participating in a Google Meet call. "
+                                "You are talking directly to the participants. Below is the transcript of the conversation so far.\n\n"
+                                "Transcript:\n"
+                                f"{history_text}\n"
+                                "Respond to the last message, keeping the conversation context in mind.\n\n"
+                                "You MUST respond in a valid JSON format with the following keys:\n"
+                                "1. \"reply\": A natural, short, and friendly text response (1 to 2 sentences max, no markdown/markup) to be spoken. You can occasionally ask a brief, natural follow-up question to keep the conversation flowing.\n"
+                                "2. \"action\": An optional object if the user explicitly requests showing, switching, building, or rendering a template/prototype in the sandbox. If they request the calculator, set this to {\"type\": \"SANDBOX_ACTION\", \"template\": \"calculator\"}. If they request a landing page or website, set this to {\"type\": \"SANDBOX_ACTION\", \"template\": \"landing\"}. Otherwise, set this to null.\n\n"
+                                "Ensure your entire output is a single valid JSON block, with no other text around it."
+                            )
                             
-                            try:
-                                # Clean up markdown block formatting if present
-                                clean_json = reply_json.strip()
-                                if clean_json.startswith("```"):
-                                    clean_json = clean_json.split("\n", 1)[1]
-                                    if clean_json.endswith("```"):
-                                        clean_json = clean_json.rsplit("\n", 1)[0]
-                                clean_json = clean_json.strip()
-                                
-                                response_data = json.loads(clean_json)
-                                reply = response_data.get("reply", "")
-                                action = response_data.get("action")
-                            except Exception as e:
-                                print(f"[Luna Brain Error] Failed to parse JSON response: {e}. Raw response: {reply_json}")
-                                # Fallback to raw text if model failed to output valid JSON
-                                reply = reply_json
-                                action = None
+                            reply_json = generate_response(prompt)
+                            if reply_json:
+                                try:
+                                    # Clean up markdown block formatting if present
+                                    clean_json = reply_json.strip()
+                                    if clean_json.startswith("```"):
+                                        clean_json = clean_json.split("\n", 1)[1]
+                                        if clean_json.endswith("```"):
+                                            clean_json = clean_json.rsplit("\n", 1)[0]
+                                    clean_json = clean_json.strip()
+                                    
+                                    response_data = json.loads(clean_json)
+                                    reply = response_data.get("reply", "")
+                                    action = response_data.get("action")
+                                except Exception as e:
+                                    print(f"[Luna Brain Error] Failed to parse JSON response: {e}. Raw response: {reply_json}")
+                                    # Fallback to raw text if model failed to output valid JSON
+                                    reply = reply_json
+                                    action = None
 
                             if reply:
                                 print(f"[Luna Brain] Replying to {sender}: \"{reply}\"")

@@ -56,7 +56,8 @@ function callGoogleCloudTTS(text, token, callback) {
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
+            'Content-Length': Buffer.byteLength(postData),
+            'X-Goog-User-Project': 'gdm-inception'
         }
     };
 
