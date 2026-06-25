@@ -144,11 +144,15 @@ const server = http.createServer((req, res) => {
         }
 
         const timestamp = Date.now();
-        const aiffPath = path.join('/tmp', `speech_${timestamp}.aiff`);
         const wavPath = path.join('/tmp', `speech_${timestamp}.wav`);
 
-        // Run macOS say command
-        execFile('/usr/bin/say', ['-o', aiffPath, text], (err, stdout, stderr) => {
+        // Run macOS say command outputting directly to WAVE format
+        execFile('/usr/bin/say', [
+            '-o', wavPath,
+            '--file-format=WAVE',
+            '--data-format=LEI16@22050',
+            text
+        ], (err, stdout, stderr) => {
             if (err) {
                 console.error('[TTS API Error] say command failed:', err, 'Stderr:', stderr);
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -156,34 +160,21 @@ const server = http.createServer((req, res) => {
                 return;
             }
 
-            // Convert AIFF to WAV
-            execFile('/usr/bin/afconvert', ['-f', 'WAVE', '-d', 'LEI16@22050', aiffPath, wavPath], (err2) => {
-                // Clean up AIFF file
-                fs.unlink(aiffPath, () => {});
-
-                if (err2) {
-                    console.error('[TTS API Error] afconvert failed:', err2);
+            // Serve the WAV file
+            const stream = fs.createReadStream(wavPath);
+            stream.on('error', (streamErr) => {
+                console.error('[TTS Server Error] Read stream failed:', streamErr.message);
+                if (!res.headersSent) {
                     res.writeHead(500, { 'Content-Type': 'text/plain' });
-                    res.end('Failed to convert speech');
-                    return;
+                    res.end('File read error');
                 }
+            });
+            res.writeHead(200, { 'Content-Type': 'audio/wav' });
+            stream.pipe(res);
 
-                // Serve the WAV file
-                const stream = fs.createReadStream(wavPath);
-                stream.on('error', (streamErr) => {
-                    console.error('[TTS Server Error] Read stream failed:', streamErr.message);
-                    if (!res.headersSent) {
-                        res.writeHead(500, { 'Content-Type': 'text/plain' });
-                        res.end('File read error');
-                    }
-                });
-                res.writeHead(200, { 'Content-Type': 'audio/wav' });
-                stream.pipe(res);
-
-                // Clean up WAV file after sending
-                res.on('finish', () => {
-                    fs.unlink(wavPath, () => {});
-                });
+            // Clean up WAV file after sending
+            res.on('finish', () => {
+                fs.unlink(wavPath, () => {});
             });
         });
         return;
