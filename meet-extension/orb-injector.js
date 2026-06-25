@@ -1,4 +1,10 @@
 (function() {
+    if (window.__luna_orb_injected) {
+        console.log("[Luna 2.0] Orb already injected, skipping redundant initialization...");
+        return;
+    }
+    window.__luna_orb_injected = true;
+
     const isBot = window.location.search.includes('luna=true') || sessionStorage.getItem('luna_bot_active') === 'true';
     if (!isBot) return;
     window.__luna_content_script_active = true;

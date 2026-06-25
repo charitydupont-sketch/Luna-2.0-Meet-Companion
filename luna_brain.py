@@ -5,9 +5,21 @@ import subprocess
 import ssl
 import time
 
+cached_token = None
+token_expiry = 0.0
+
 def get_access_token():
+    global cached_token, token_expiry
+    # Reuse cached token if it is valid for at least another 60 seconds
+    if cached_token and time.time() < token_expiry - 60:
+        return cached_token
+
     try:
-        return subprocess.check_output(["gcloud", "auth", "application-default", "print-access-token"]).decode("utf-8").strip()
+        token = subprocess.check_output(["gcloud", "auth", "application-default", "print-access-token"]).decode("utf-8").strip()
+        cached_token = token
+        # Access tokens typically last 1 hour (3600 seconds)
+        token_expiry = time.time() + 3500
+        return token
     except Exception as e:
         print(f"[Luna Brain Error] Failed to get OAuth token: {e}")
         return None
@@ -172,6 +184,7 @@ def main_loop():
                         clean_text = text.strip().lower().replace("?", "").replace(".", "").replace(",", "")
                         is_pure_mention = clean_text in ["luna", "hey luna", "hi luna", "loona", "lunar"]
                         
+                        hardcoded_reply = check_hardcoded_queries(text)
                         if is_pure_mention:
                             reply = f"Yes, {first_name}?"
                             action = None

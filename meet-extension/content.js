@@ -463,36 +463,64 @@ function setupCaptionsObserver() {
 
             // Update the speaker's text buffer
             if (!speakerBuffers[speakerName]) {
-                speakerBuffers[speakerName] = { text: "", timer: null };
+                speakerBuffers[speakerName] = { blocks: new Map(), timer: null };
             }
 
             const buffer = speakerBuffers[speakerName];
             
-            // If the new text is different, update buffer and reset debounce timer
-            if (fullText !== buffer.text) {
-                buffer.text = fullText;
+            // Assign a unique ID to the block element if it doesn't have one
+            if (!block.__luna_block_id) {
+                block.__luna_block_id = 'block_' + Math.random().toString(36).substring(2, 9);
+            }
+            const blockId = block.__luna_block_id;
+            
+            // Get text elements inside this specific block that haven't been sent yet
+            const blockTextEls = querySelectorAllMultiple(block, [
+                '.ygicle.VbkSUe',
+                '.iTTPOb'
+            ]).filter(el => el.getAttribute('data-luna-sent') !== 'true');
+            
+            let blockText = "";
+            blockTextEls.forEach(el => {
+                blockText += el.textContent + " ";
+            });
+            blockText = blockText.trim();
+            
+            if (!blockText) return;
+            
+            // Check if this block's text has changed
+            const oldBlockText = buffer.blocks.get(blockId) || "";
+            if (blockText !== oldBlockText) {
+                buffer.blocks.set(blockId, blockText);
                 
+                // Reset debounce timer
                 if (buffer.timer) clearTimeout(buffer.timer);
                 
                 buffer.timer = setTimeout(() => {
-                    // Silence threshold reached: Speaker has finished speaking!
-                    const finishedText = buffer.text;
+                    // Combine all active blocks text in order
+                    const textSegments = Array.from(buffer.blocks.values()).filter(t => t.trim().length > 0);
+                    const finishedText = textSegments.join(" ").trim();
                     
-                    // Deduplicate sent captions using memory cache
+                    if (!finishedText) {
+                        buffer.blocks.clear();
+                        return;
+                    }
+                    
+                    // Deduplicate sent captions
                     const now = Date.now();
                     sentCaptions = sentCaptions.filter(item => now - item.timestamp < 6000);
                     const alreadySent = sentCaptions.some(item => item.sender === speakerName && item.text === finishedText);
                     if (alreadySent) {
-                        contentLog(`[Luna 2.0 Captions] Already sent this caption recently (ignoring duplicate): ${finishedText}`);
-                        buffer.text = "";
+                        buffer.blocks.clear();
                         return;
                     }
                     
                     contentLog(`[Luna 2.0 Captions] ${speakerName} finished speaking: ${finishedText}`);
                     
-                    // Mark the text elements as sent so they are not processed again
-                    activeTextEls.forEach(el => {
-                        el.setAttribute('data-luna-sent', 'true');
+                    // Mark all processed text elements in all active blocks as sent
+                    finalBlocks.forEach(b => {
+                        const els = querySelectorAllMultiple(b, ['.ygicle.VbkSUe', '.iTTPOb']);
+                        els.forEach(el => el.setAttribute('data-luna-sent', 'true'));
                     });
                     
                     // Add to sent cache
@@ -512,9 +540,9 @@ function setupCaptionsObserver() {
                         }
                     }, '*');
                     
-                    // Clear buffer text so we don't repeat
-                    buffer.text = "";
-                }, 900); // 0.9 seconds silence threshold
+                    // Clear buffer blocks map
+                    buffer.blocks.clear();
+                }, 1200); // 1.2 seconds silence threshold
             }
         });
     });
@@ -529,8 +557,17 @@ function autoEnableCaptions() {
                   document.querySelector('button[data-tooltip*="subtitles" i]');
     if (ccBtn) {
         if (!isCaptionsEnabled(ccBtn)) {
-            contentLog("[Luna 2.0 Extension] Automatically enabling captions for Luna...");
-            ccBtn.click();
+            // Check if the side panel "Turn on captions" button is visible
+            const turnOnBtn = Array.from(document.querySelectorAll('button, [role="button"], span'))
+                .find(el => el.textContent.trim() === 'Turn on captions');
+                
+            if (turnOnBtn) {
+                contentLog("[Luna 2.0 Extension] Clicking 'Turn on captions' button in settings panel...");
+                turnOnBtn.click();
+            } else {
+                contentLog("[Luna 2.0 Extension] Opening captions settings panel...");
+                ccBtn.click();
+            }
         }
     }
 }
@@ -637,6 +674,8 @@ function ensureUnmuted() {
     }
 
 } else {
+}
+
     // Host mode logic (runs on the meeting host's browser context)
     function runHostAutoAdmit() {
         setInterval(() => {
@@ -657,6 +696,5 @@ function ensureUnmuted() {
     } else {
         window.addEventListener('load', runHostAutoAdmit);
     }
-}
 }
 

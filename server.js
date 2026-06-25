@@ -78,20 +78,35 @@ const server = http.createServer((req, res) => {
                 }
 
                 // SECURITY: Strictly validate the meet URL to prevent shell injection attacks
-                // Expected format: https://meet.google.com/abc-defg-hij
-                const meetRegex = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/;
-                if (!meetRegex.test(meetUrl)) {
+                let parsedUrl;
+                try {
+                    parsedUrl = new URL(meetUrl);
+                } catch (e) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Invalid Google Meet URL format. Must match https://meet.google.com/abc-defg-hij' }));
+                    res.end(JSON.stringify({ error: 'Invalid URL format' }));
                     return;
                 }
 
-                console.log(`[Luna 2.0 API] Request received to join actual Google Meet: ${meetUrl}`);
+                if (parsedUrl.protocol !== 'https:' || parsedUrl.hostname !== 'meet.google.com') {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Google Meet URL must be on meet.google.com' }));
+                    return;
+                }
+
+                const pathRegex = /^\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/;
+                if (!pathRegex.test(parsedUrl.pathname)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid Google Meet URL format. Path must match /abc-defg-hij' }));
+                    return;
+                }
+
+                const cleanMeetUrl = `https://meet.google.com${parsedUrl.pathname}`;
+                console.log(`[Luna 2.0 API] Request received to join actual Google Meet: ${cleanMeetUrl}`);
                 
                 cleanupStaleMeetProcess(() => {
                     const scriptPath = path.join(PUBLIC_DIR, 'run_luna_meet.sh');
                     
-                    activeMeetProcess = execFile(scriptPath, [meetUrl], (error, stdout, stderr) => {
+                    activeMeetProcess = execFile(scriptPath, [cleanMeetUrl], (error, stdout, stderr) => {
                         if (error) {
                             console.error(`[Luna 2.0 API Error] Failed to launch Meet script: ${error.message}`);
                         }
