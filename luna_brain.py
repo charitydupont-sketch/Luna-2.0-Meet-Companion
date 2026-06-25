@@ -76,16 +76,23 @@ def post_to_meet(payload):
 def check_hardcoded_queries(text):
     normalized = text.lower()
     
-    # Creator keywords
-    creator_keywords = ["who made you", "who created you", "who built you", "who is your creator", "who is your developer", "who designed you"]
-    if any(k in normalized for k in creator_keywords):
-        return "Charity, a UX designer at Google DeepMind, is the one who created me."
-        
-    # Origin keywords
-    origin_keywords = ["where are you from", "where do you come from", "where were you made"]
-    if any(k in normalized for k in origin_keywords):
-        return "I was created by Charity, a UX designer at Google DeepMind."
-        
+    # Define keywords for actions and targets related to creation
+    creator_actions = ["create", "created", "creating", "creator", "make", "made", "maker", "built", "build", "designed", "design", "developer", "developers", "developed"]
+    creator_targets = ["you", "joe", "luna", "your"]
+    
+    has_action = any(act in normalized for act in creator_actions)
+    has_target = any(tgt in normalized for tgt in creator_targets)
+    
+    # Check if the query is a "who/what" question inquiring about creation
+    if has_action and has_target:
+        if any(w in normalized for w in ["who", "what", "tell me", "know"]):
+            return "Charity, a UX designer at Google DeepMind, is the one who created me."
+            
+    # Also support origin questions ("where are you from", "where were you made")
+    if "where" in normalized and any(tgt in normalized for tgt in creator_targets):
+        if any(w in normalized for w in ["from", "made", "born", "come"]):
+            return "I was created by Charity, a UX designer at Google DeepMind."
+            
     return None
 
 def main_loop():
@@ -136,7 +143,7 @@ def main_loop():
                             conversation_history.pop(0)
 
                         # Determine if we should respond
-                        is_mention = "luna" in text.lower()
+                        is_mention = any(m in text.lower() for m in ["luna", "loona", "lunar"])
                         is_session_active = session_active and time.time() < session_expires_at
                         
                         should_respond = is_mention or (evt_type == "MEET_CHAT") or (evt_type == "MEET_CAPTION" and is_session_active)
