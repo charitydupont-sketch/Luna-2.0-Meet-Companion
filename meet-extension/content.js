@@ -321,6 +321,7 @@ function setupChatObserver() {
 }
 
 // 5. Capture Meet Live Captions and forward to Luna Hub
+let observedCaptionsContainer = null;
 let captionsObserver = null;
 let speakerBuffers = {}; // Map of senderName -> { text: string, timer: timeout }
 
@@ -361,11 +362,23 @@ function setupCaptionsObserver() {
                       document.querySelector('[role="region"][aria-label*="subtitle" i]') || 
                       document.querySelector('[jsname="dsyhDe"]') ||
                       document.querySelector('div[aria-label="Captions"]');
-    if (!container) return;
+    if (!container) {
+        observedCaptionsContainer = null;
+        if (captionsObserver) {
+            try { captionsObserver.disconnect(); } catch(e){}
+            captionsObserver = null;
+        }
+        return;
+    }
 
-    if (captionsObserver) return; // Already observing
+    if (observedCaptionsContainer === container) return; // Already observing
 
-    contentLog("[Luna 2.0 Extension] Live Captions container found. Injecting captions listener MutationObserver.");
+    if (captionsObserver) {
+        try { captionsObserver.disconnect(); } catch(e){}
+    }
+
+    observedCaptionsContainer = container;
+    contentLog("[Luna 2.0 Extension] Live Captions container found/changed. Injecting captions listener MutationObserver.");
 
     captionsObserver = new MutationObserver((mutations) => {
         // Find all active caption blocks inside the container
