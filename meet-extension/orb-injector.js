@@ -27,6 +27,8 @@
         targetRadius: 100,
         particles: [],
         currentAudio: null,
+        pendingCaptions: "",
+        captionsTimeout: null,
         colors: {
             idle: ['rgba(99, 102, 241, 0.45)', 'rgba(217, 70, 239, 0.35)', 'rgba(6, 182, 212, 0.25)'],
             listening: ['rgba(6, 182, 212, 0.65)', 'rgba(99, 102, 241, 0.45)', 'rgba(16, 185, 129, 0.3)'],
@@ -228,11 +230,23 @@
             source.connect(audioDest);
             source.connect(audioCtx.destination);
             
-            audio.play().catch(err => {
+            audio.play().then(() => {
+                state.currentStatus = 'speaking';
+                // Show the pending captions box in sync with audio start
+                if (state.pendingCaptions) {
+                    captionsBox.textContent = state.pendingCaptions;
+                    captionsBox.style.display = 'block';
+                    const displayDuration = Math.max(3000, state.pendingCaptions.length * 80);
+                    if (state.captionsTimeout) clearTimeout(state.captionsTimeout);
+                    state.captionsTimeout = setTimeout(() => {
+                        captionsBox.style.display = 'none';
+                        state.pendingCaptions = "";
+                    }, displayDuration);
+                }
+            }).catch(err => {
                 originalError("[Luna 2.0 Audio Error] Failed to play base64 audio: " + err.message);
             });
 
-            state.currentStatus = 'speaking';
             audio.onended = () => {
                 state.currentStatus = 'idle';
                 if (state.currentAudio === audio) {
@@ -269,7 +283,20 @@
                 console.warn("[Luna 2.0 Audio Warning] TTS generation failed in bridge, falling back to Web Speech:", e.data.error);
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(e.data.text);
-                utterance.onstart = () => { state.currentStatus = 'speaking'; };
+                utterance.onstart = () => {
+                    state.currentStatus = 'speaking';
+                    // Show captions in sync with fallback voice start
+                    if (state.pendingCaptions) {
+                        captionsBox.textContent = state.pendingCaptions;
+                        captionsBox.style.display = 'block';
+                        const displayDuration = Math.max(3000, state.pendingCaptions.length * 80);
+                        if (state.captionsTimeout) clearTimeout(state.captionsTimeout);
+                        state.captionsTimeout = setTimeout(() => {
+                            captionsBox.style.display = 'none';
+                            state.pendingCaptions = "";
+                        }, displayDuration);
+                    }
+                };
                 utterance.onend = () => { state.currentStatus = 'idle'; };
                 window.speechSynthesis.speak(utterance);
             }
@@ -287,7 +314,11 @@
                     window.speechSynthesis.cancel();
                     state.currentStatus = 'idle';
                     state.targetRadius = 100;
+                    
+                    // Clear timeout and hide captions instantly on interrupt
+                    if (state.captionsTimeout) clearTimeout(state.captionsTimeout);
                     captionsBox.style.display = 'none';
+                    state.pendingCaptions = "";
                     return;
                 }
                 if (update.state) {
@@ -297,13 +328,9 @@
                     else state.targetRadius = 100;
                 }
                 if (update.text) {
-                    captionsBox.textContent = update.text;
-                    captionsBox.style.display = 'block';
-                    
+                    // Store in pendingCaptions and fetch audio first (do not display yet)
+                    state.pendingCaptions = update.text;
                     playLunaVoice(update.text);
-                    
-                    const displayDuration = Math.max(3000, update.text.length * 80);
-                    setTimeout(() => { captionsBox.style.display = 'none'; }, displayDuration);
                 }
             }
         }
