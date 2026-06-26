@@ -27,7 +27,12 @@ Open your terminal inside the unzipped folder and run the setup script:
 ```
 This script will automatically verify your runtimes and install the required Python dependencies (`websockets`).
 
-### Step 2: Running Luna
+### Step 2: Configure your API Key (External Users Only)
+If you do **not** have a corporate Google Cloud account:
+1. Make a copy of `.env.template` and rename it to **`.env`** in the same folder.
+2. Open the `.env` file in any text editor and paste your free Gemini API Key (generated from [aistudio.google.com](https://aistudio.google.com/)).
+
+### Step 3: Running Luna
 
 #### Option A: Quick Double-Click (macOS)
 Simply double-click the **`Start_Luna.command`** file inside the folder. It will:

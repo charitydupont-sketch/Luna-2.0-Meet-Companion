@@ -9,6 +9,15 @@ import time
 cached_token = None
 token_expiry = 0.0
 
+# Load local .env file if present (useful for external setups)
+if os.path.exists(".env"):
+    with open(".env", "r") as f:
+        for line in f:
+            if "=" in line and not line.strip().startswith("#"):
+                k, v = line.strip().split("=", 1)
+                os.environ[k.strip()] = v.strip().strip('"').strip("'")
+
+
 def get_access_token():
     global cached_token, token_expiry
     # Reuse cached token if it is valid for at least another 60 seconds
